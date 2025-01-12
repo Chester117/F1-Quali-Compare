@@ -357,4 +357,4 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
 
     // Initial chart update
     updateCharts();
-}
+
