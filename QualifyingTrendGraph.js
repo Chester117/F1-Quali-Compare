@@ -479,13 +479,11 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
     }
 
     function calculateTrendSegments(data) {
-        const points = data.map((value, index) => 
-            value !== null ? [index + 1, value] : null
-        ).filter(point => point !== null);
-
-        if (points.length < 2) return [];
-
+        if (data.length < 2) return [];
+    
+        const points = data;
         const segmentLength = Math.floor(points.length / currentSegments);
+        
         return Array.from({ length: currentSegments }, (_, i) => {
             const start = i * segmentLength;
             const end = i === currentSegments - 1 ? points.length : (i + 1) * segmentLength;
