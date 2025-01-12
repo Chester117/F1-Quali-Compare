@@ -146,7 +146,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
     function createSeries(data, trends, isTrendOnly) {
         if (isTrendOnly) {
             return [
-                ...(state.showDataPointsInTrend ? [{
+                ...(showDataPointsInTrend ? [{
                     name: 'Data Points',
                     data: data,
                     color: 'rgba(0, 0, 139, 0.15)',
@@ -170,40 +170,54 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 marker: { enabled: true, radius: 4 },
                 connectNulls: false
             },
-            ...(state.showTrendInMain ? trends : [])
+            ...(showTrendInMain ? trends : [])
         ];
     }
 
     // Trend calculation
     function calculateTrends(data) {
         if (data.length < 2) return [];
+    
+        // Calculate points per segment
+        const pointsPerSegment = Math.ceil(data.length / currentSegments);
         
-        const segmentLength = Math.floor(data.length / state.currentSegments);
-        return Array.from({ length: state.currentSegments }, (_, i) => {
-            const start = i * segmentLength;
-            const end = i === state.currentSegments - 1 ? data.length : (i + 1) * segmentLength;
-            const segment = data.slice(start, end);
+        // Create segments
+        const segments = [];
+        for (let i = 0; i < currentSegments; i++) {
+            const start = i * pointsPerSegment;
+            const end = Math.min(start + pointsPerSegment, data.length);
+            const segmentData = data.slice(start, end);
             
-            if (segment.length > 1) {
-                const trend = ss.linearRegression(segment);
-                const firstX = segment[0][0];
-                const lastX = segment[segment.length - 1][0];
+            if (segmentData.length > 1) {
+                // Prepare data for linear regression
+                const points = segmentData.map((point, index) => [point[0], point[1]]);
                 
-                return {
-                    name: `Trend ${state.currentSegments > 1 ? (i + 1) : ''}`,
-                    data: Array.from({ length: lastX - firstX + 1 }, (_, j) => {
-                        const x = firstX + j;
-                        return [x, Number((trend.m * x + trend.b).toFixed(3))];
-                    }),
+                // Calculate linear regression
+                const trend = ss.linearRegression(points);
+                const firstX = segmentData[0][0];
+                const lastX = segmentData[segmentData.length - 1][0];
+                
+                // Generate trend line points
+                const trendData = [];
+                for (let x = firstX; x <= lastX; x++) {
+                    const y = trend.m * x + trend.b;
+                    trendData.push([x, Number(y.toFixed(3))]);
+                }
+                
+                segments.push({
+                    name: `Trend ${currentSegments > 1 ? (i + 1) : ''}`,
+                    data: trendData,
                     dashStyle: 'solid',
                     color: '#3cb371',
-                    lineWidth: 3,
+                    lineWidth: 4,
                     marker: { enabled: false }
-                };
+                });
             }
-            return null;
-        }).filter(Boolean);
+        }
+        
+        return segments;
     }
+
 
     // UI Controls
     function createControls() {
