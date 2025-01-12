@@ -1,19 +1,19 @@
 function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
     // State management
     const state = {
-            filteredData: [...data],
-            excludedPoints: [],
-            currentSegments: 3,          // Default 3 segments
-            activeThreshold: 2,          // Default 2% filter
-            trendOnlyGraph: null,
-            mainChart: null,
-            trendChart: null,
-            isZeroLineRed: true,         // Zero line on by default
-            showTrendInMain: true,       // Trend on by default
-            showDataPointsInTrend: true, // Show data points by default
-            driver1LastName: driver1Name.split(' ').pop(),
-            driver2LastName: driver2Name.split(' ').pop()
-        };
+        filteredData: [...data],     // Start with full data
+        excludedPoints: [],
+        currentSegments: 3,
+        activeThreshold: 2,          // Set default filter to 2%
+        trendOnlyGraph: null,
+        mainChart: null,
+        trendChart: null,
+        isZeroLineRed: true,         // Zero line on by default
+        showTrendInMain: true,       // Trend button on by default
+        showDataPointsInTrend: false,
+        driver1LastName: driver1Name.split(' ').pop(),
+        driver2LastName: driver2Name.split(' ').pop()
+    };
 
     // Styles
     const styles = {
@@ -98,7 +98,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
             max: yMax,
             labels: { format: '{value:.1f}%', style: { fontSize: '12px' } },
             plotLines: [{
-                color: '#ff3333',  // Always start with red line
+                color: state.isZeroLineRed ? '#ff3333' : '#CCCCCC',
                 width: 1,
                 value: 0,
                 zIndex: 2
@@ -149,24 +149,11 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 ...(state.showDataPointsInTrend ? [{
                     name: 'Data Points',
                     data: data,
-                    color: 'rgb(0, 0, 139)',  // Solid blue without transparency
-                    marker: { 
-                        enabled: true, 
-                        radius: 3,
-                        states: {
-                            hover: {
-                                enabled: false  // Disable hover effect
-                            }
-                        }
-                    },
+                    color: 'rgba(0, 0, 139, 0.15)',
+                    marker: { enabled: true, radius: 3 },
                     lineWidth: 1,
                     connectNulls: false,
-                    enableMouseTracking: false,
-                    states: {
-                        inactive: {
-                            opacity: 1  // Maintain opacity when inactive
-                        }
-                    }
+                    enableMouseTracking: false
                 }] : []),
                 ...trends.map(trend => ({
                     ...trend,
@@ -299,9 +286,153 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         buttons.forEach(button => controlRow.appendChild(button));
     
         container.appendChild(controlRow);
+}
+
+    // Chart updates
+    function updateCharts() {
+        const chartData = prepareChartData();
+        
+        // Update main chart
+        if (state.mainChart) {
+            state.mainChart.destroy();
+        }
+        state.mainChart = Highcharts.chart(container.querySelector('.main-chart'), 
+            getChartConfig(chartData.data, chartData.trends, chartData.yMin, chartData.yMax));
+        
+        // Update trend chart if it exists
+        if (state.trendOnlyGraph) {
+            if (state.trendChart) {
+                state.trendChart.destroy();
+            }
+            state.trendChart = Highcharts.chart(state.trendOnlyGraph, 
+                getChartConfig(chartData.data, chartData.trends, chartData.yMin, chartData.yMax, true));
+        }
     }
 
-    // Initialize the main container and charts
+    // Event Handlers
+    function handleFilterChange(threshold) {
+        if (threshold === 0) {
+            state.filteredData = [...data];
+            state.excludedPoints = [];
+            state.activeThreshold = null;
+            container.querySelector('.excluded-points')?.remove();
+        } else {
+            state.excludedPoints = [];
+            state.filteredData = data.map((value, index) => {
+                const absValue = Math.abs(value);
+                if (absValue > threshold) {
+                    state.excludedPoints.push({ 
+                        raceNumber: index + 1, 
+                        value: Number(value.toFixed(3)) 
+                    });
+                    return null;
+                }
+                return value;
+            });
+            state.activeThreshold = threshold;
+            
+            if (state.excludedPoints.length) {
+                showExcludedPoints();
+            } else {
+                container.querySelector('.excluded-points')?.remove();
+            }
+        }
+        updateCharts();
+    }
+    
+    function showExcludedPoints() {
+        let excludedDiv = container.querySelector('.excluded-points');
+        if (!excludedDiv) {
+            excludedDiv = document.createElement('div');
+            excludedDiv.className = 'excluded-points';
+            excludedDiv.style.cssText = 'padding: 10px; background-color: #f5f5f5; border-radius: 4px; margin-top: 10px; text-align: center;';
+            container.appendChild(excludedDiv);
+        }
+        excludedDiv.innerHTML = '<strong>Excluded Points:</strong><br>' +
+            state.excludedPoints.map(p => `Race ${p.raceNumber}: ${p.value}%`).join('<br>');
+    }
+
+    function toggleZeroLine() {
+        state.isZeroLineRed = !state.isZeroLineRed;
+        this.style.backgroundColor = state.isZeroLineRed ? '#8b0000' : '#4a4a4a';
+        
+        const updateZeroLine = (chart) => {
+            if (!chart) return;
+            const zeroLine = chart.yAxis[0].plotLinesAndBands[0];
+            zeroLine.svgElem?.attr({
+                stroke: state.isZeroLineRed ? '#ff3333' : '#CCCCCC'
+            });
+        };
+        
+        updateZeroLine(state.mainChart);
+        updateZeroLine(state.trendChart);
+    }
+
+    function toggleTrend() {
+        state.showTrendInMain = !state.showTrendInMain;
+        this.style.backgroundColor = state.showTrendInMain ? '#3cb371' : '#4a4a4a';
+        updateCharts();
+    }
+
+    function toggleSeparateTrend() {
+        if (!state.trendOnlyGraph) {
+            // Create separate trend graph
+            const graphContainer = document.createElement('div');
+            graphContainer.style.cssText = 'width: 100%; height: 400px; margin-top: 20px';
+            container.appendChild(graphContainer);
+            
+            const toggleButton = createButton('Show Data Points', () => {
+                state.showDataPointsInTrend = !state.showDataPointsInTrend;
+                toggleButton.style.backgroundColor = state.showDataPointsInTrend ? '#3cb371' : '#4a4a4a';
+                updateCharts();
+            });
+            toggleButton.style.marginTop = '10px';
+            container.appendChild(toggleButton);
+            
+            state.trendOnlyGraph = graphContainer;
+            this.style.backgroundColor = '#3cb371';
+            state.showTrendInMain = false;
+        } else {
+            // Remove separate trend graph
+            container.removeChild(state.trendOnlyGraph.nextSibling); // Remove toggle button
+            container.removeChild(state.trendOnlyGraph);
+            state.trendOnlyGraph = null;
+            this.style.backgroundColor = '#4a4a4a';
+            state.showTrendInMain = true;
+        }
+        updateCharts();
+    }
+
+    function prepareChartData() {
+        const filteredFullData = data.map((value, index) => {
+            if (state.activeThreshold && Math.abs(value) > state.activeThreshold) {
+                return [index + 1, null];
+            }
+            return [index + 1, value !== null ? Number(value.toFixed(3)) : null];
+        });
+        
+        const validFilteredData = filteredFullData
+            .filter(point => point[1] !== null)
+            .map((point) => [point[0], point[1]]);
+        
+        const trends = calculateTrends(validFilteredData);
+        
+        const validValues = filteredFullData
+            .filter(point => point[1] !== null)
+            .map(point => point[1]);
+        
+        const yMin = validValues.length > 0 
+            ? Math.min(...validValues) - Math.abs(Math.min(...validValues) * 0.1)
+            : -1;
+        
+        const yMax = validValues.length > 0 
+            ? Math.max(...validValues) + Math.abs(Math.max(...validValues) * 0.1)
+            : 1;
+        
+        return { data: filteredFullData, trends, yMin, yMax };
+    }
+
+    // Initialize
     const mainChartContainer = document.createElement('div');
     mainChartContainer.className = 'main-chart';
     mainChartContainer.style.cssText = 'width: 100%; height: 400px';
@@ -326,27 +457,19 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         // Apply initial filter
         handleFilterChange(2);
 
-        // Show separate trend graph and update button state
+        // Show separate trend graph
         const separateTrendButton = container.querySelector('button:nth-child(5)');
         if (separateTrendButton) {
             separateTrendButton.click();
-            
-            // After creating separate trend graph, set its data points button
-            setTimeout(() => {
-                const dataPointsButton = container.querySelector('button:last-child');
-                if (dataPointsButton) {
-                    dataPointsButton.style.backgroundColor = '#3cb371';
-                }
-            }, 0);
         }
 
-        // Update zero line button state
+        // Enable zero line
         const zeroLineButton = container.querySelector('button:nth-child(3)');
         if (zeroLineButton) {
-            zeroLineButton.style.backgroundColor = '#8b0000';
+            zeroLineButton.click();
         }
 
-        // Update trend button state
+        // Ensure trend button is active
         const trendButton = container.querySelector('button:nth-child(4)');
         if (trendButton) {
             trendButton.style.backgroundColor = '#3cb371';
@@ -357,4 +480,4 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
 
     // Initial chart update
     updateCharts();
-
+}
