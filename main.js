@@ -543,34 +543,157 @@ async function displayResults(){
     createQualifyingTable(qualifying);
 }
 
-async function main(){
-    const select = document.getElementById("seasonList");
-    select.addEventListener("change", selectOnChange);
+function switchTab(tab) {
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.classList.remove('active');
+    });
+    
+    document.getElementById('qualifying-content').style.display = tab === 'qualifying' ? 'block' : 'none';
+    document.getElementById('history-content').style.display = tab === 'history' ? 'block' : 'none';
+    document.querySelector(`.tab-button[data-tab="${tab}"]`).classList.add('active');
+}
 
-    const goButton = document.getElementById("go");
-    goButton.addEventListener("click", displayResults);
+async function fillYearSelectors() {
+    const years = await getSeasons();
+    if (!years) return;
 
-    let results = await getSeasons();
-    if(results){
-        results.MRData.SeasonTable.Seasons.reverse();
+    const yearOptions = years.MRData.SeasonTable.Seasons.reverse().map(s => s.season);
+    ['startYearList', 'endYearList'].forEach(id => {
+        const select = document.getElementById(id);
+        select.innerHTML = yearOptions.map(year => 
+            `<option value="${year}">${year}</option>`
+        ).join('');
+    });
 
-        //fill constructor table for first option
-        const list = await getConstructors(results.MRData.SeasonTable.Seasons[0].season);
-        if(list){
-            fillConstructorsList(list);
-        }
-
-        results.MRData.SeasonTable.Seasons.forEach((elm) =>{
-            const option = document.createElement("option");
-            option.value = elm.season;
-            option.innerHTML = elm.season;
-            select.appendChild(option);
-        });
+    // Fill constructor list for history tab
+    const list = await getConstructors(yearOptions[0]);
+    if (list) {
+        const historyConstructor = document.getElementById('historyConstructorList');
+        historyConstructor.innerHTML = list.MRData.ConstructorTable.Constructors.map(team => 
+            `<option value="${team.name}" id="${team.constructorId}">${team.name}</option>`
+        ).join('');
     }
 }
 
-window.addEventListener("load", () =>{
+async function showHistoryResults() {
+    const startYear = parseInt(document.getElementById('startYearList').value);
+    const endYear = parseInt(document.getElementById('endYearList').value);
+    const constructorId = document.getElementById('historyConstructorList').options[
+        document.getElementById('historyConstructorList').selectedIndex
+    ].id;
+
+    if (startYear > endYear) {
+        alert('Start year must be less than or equal to end year');
+        return;
+    }
+
+    const tableRows = [];
+    for(let year = startYear; year <= endYear; year++) {
+        const data = await getQualifying(year, constructorId);
+        if (!data?.MRData.RaceTable.Races.length) continue;
+
+        let totalGaps = [];
+        let driver1Wins = 0;
+        let totalRaces = 0;
+        
+        // Get first race with two drivers to get names
+        const firstRace = data.MRData.RaceTable.Races.find(r => r.QualifyingResults.length === 2);
+        if (!firstRace) continue;
+
+        const driver1 = `${firstRace.QualifyingResults[0].Driver.givenName} ${firstRace.QualifyingResults[0].Driver.familyName}`;
+        const driver2 = `${firstRace.QualifyingResults[1].Driver.givenName} ${firstRace.QualifyingResults[1].Driver.familyName}`;
+
+        // Calculate gaps for each race
+        data.MRData.RaceTable.Races.forEach(race => {
+            if (race.QualifyingResults.length !== 2) return;
+            const [d1, d2] = race.QualifyingResults;
+            
+            // Find best comparable time
+            let t1, t2;
+            if (d1.Q3 && d2.Q3) { t1 = d1.Q3; t2 = d2.Q3; }
+            else if (d1.Q2 && d2.Q2) { t1 = d1.Q2; t2 = d2.Q2; }
+            else if (d1.Q1 && d2.Q1) { t1 = d1.Q1; t2 = d2.Q1; }
+            else return;
+
+            const gap = (convertTimeString(t2) - convertTimeString(t1)) / convertTimeString(t1) * 100;
+            totalGaps.push(gap);
+            if (gap > 0) driver1Wins++;
+            totalRaces++;
+        });
+
+        if (totalRaces > 0) {
+            const medianGap = calculateMedian(totalGaps);
+            tableRows.push(`
+                <tr>
+                    <td>${year}</td>
+                    <td>${driver1}</td>
+                    <td>${driver2}</td>
+                    <td>${medianGap.toFixed(3)}%</td>
+                    <td>${driver1Wins} - ${totalRaces - driver1Wins}</td>
+                </tr>
+            `);
+        }
+    }
+
+    document.getElementById('historyTable').innerHTML = `
+        <table class="history-table">
+            <tr>
+                <th>Year</th>
+                <th>Driver 1</th>
+                <th>Driver 2</th>
+                <th>Median Gap %</th>
+                <th>Qualifying Score</th>
+            </tr>
+            ${tableRows.join('')}
+        </table>
+    `;
+}
+
+
+async function main() {
+    // Initialize qualifying tab
+    const seasonList = document.getElementById("seasonList");
+    seasonList.addEventListener("change", selectOnChange);
+    document.getElementById("go").addEventListener("click", displayResults);
+
+    // Get seasons data
+    const results = await getSeasons();
+    if (results) {
+        const seasons = results.MRData.SeasonTable.Seasons.reverse();
+        const currentYear = seasons[0].season;
+
+        // Fill constructor list for qualifying tab
+        const constructorList = await getConstructors(currentYear);
+        if (constructorList) {
+            fillConstructorsList(constructorList);
+        }
+
+        // Fill season list for qualifying tab
+        seasonList.innerHTML = seasons.map(season => 
+            `<option value="${season.season}">${season.season}</option>`
+        ).join('');
+
+        // Fill year selectors for history tab
+        ['startYearList', 'endYearList'].forEach(id => {
+            document.getElementById(id).innerHTML = seasons.map(season => 
+                `<option value="${season.season}">${season.season}</option>`
+            ).join('');
+        });
+
+        // Fill constructor list for history tab
+        if (constructorList) {
+            document.getElementById('historyConstructorList').innerHTML = 
+                constructorList.MRData.ConstructorTable.Constructors.map(team => 
+                    `<option value="${team.name}" id="${team.constructorId}">${team.name}</option>`
+                ).join('');
+        }
+    }
+
+    // Initialize history tab
+    document.getElementById("historyGo").addEventListener("click", showHistoryResults);
+}
+
+window.addEventListener("load", () => {
     main();
 });
-
 
