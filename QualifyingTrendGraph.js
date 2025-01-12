@@ -2,9 +2,11 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
     let filteredData = [...data];
     let excludedPoints = [];
     let isFiltered = false;
-    let currentSegments = 1; // Track number of trend line segments
+    let currentSegments = 1;
+    let activeThreshold = null;
+    let trendOnlyGraph = null;
 
-    // Create button containers with some spacing
+    // Create main controls container
     const controlsContainer = document.createElement('div');
     controlsContainer.style.textAlign = 'center';
     controlsContainer.style.marginBottom = '20px';
@@ -19,6 +21,11 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
     const segmentContainer = document.createElement('div');
     segmentContainer.style.marginBottom = '10px';
     controlsContainer.appendChild(segmentContainer);
+
+    // Create trend-only graph button container
+    const trendButtonContainer = document.createElement('div');
+    trendButtonContainer.style.marginBottom = '10px';
+    controlsContainer.appendChild(trendButtonContainer);
 
     // Add segment selector label
     const segmentLabel = document.createElement('span');
@@ -49,22 +56,24 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         });
 
         button.onclick = () => {
-            // Update active button styles
             segmentContainer.querySelectorAll('button').forEach(btn => {
                 btn.style.backgroundColor = '#4a4a4a';
             });
             button.style.backgroundColor = '#666666';
             currentSegments = segments;
             updateChart();
+            if (trendOnlyGraph) updateTrendOnlyGraph();
         };
         segmentContainer.appendChild(button);
     });
 
     // Create filter buttons
     const filterButtons = [
-        { threshold: 2, label: '2%' },
+        { threshold: 1, label: '1%' },
         { threshold: 1.5, label: '1.5%' },
-        { threshold: 1, label: '1%' }
+        { threshold: 2, label: '2%' },
+        { threshold: 3, label: '3%' },
+        { threshold: 5, label: '5%' }
     ];
 
     filterButtons.forEach(({ threshold, label }) => {
@@ -77,17 +86,38 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         button.style.border = 'none';
         button.style.borderRadius = '4px';
         button.style.cursor = 'pointer';
+        button.style.transition = 'background-color 0.3s';
 
         button.addEventListener('mouseover', () => {
-            button.style.backgroundColor = '#666666';
+            button.style.backgroundColor = activeThreshold === threshold ? '#2d862d' : '#666666';
         });
         button.addEventListener('mouseout', () => {
-            button.style.backgroundColor = '#4a4a4a';
+            button.style.backgroundColor = activeThreshold === threshold ? '#3cb371' : '#4a4a4a';
         });
 
-        button.onclick = () => toggleFilter(threshold);
+        button.onclick = () => toggleFilter(threshold, button);
         filterButtonsContainer.appendChild(button);
     });
+
+    // Create trend-only graph button
+    const trendButton = document.createElement('button');
+    trendButton.textContent = 'Show Trend-Only Graph';
+    trendButton.style.padding = '8px 16px';
+    trendButton.style.backgroundColor = '#4a4a4a';
+    trendButton.style.color = 'white';
+    trendButton.style.border = 'none';
+    trendButton.style.borderRadius = '4px';
+    trendButton.style.cursor = 'pointer';
+
+    trendButton.addEventListener('mouseover', () => {
+        trendButton.style.backgroundColor = '#666666';
+    });
+    trendButton.addEventListener('mouseout', () => {
+        trendButton.style.backgroundColor = '#4a4a4a';
+    });
+
+    trendButton.onclick = createTrendOnlyGraph;
+    trendButtonContainer.appendChild(trendButton);
 
     // Create container for excluded points
     const excludedContainer = document.createElement('div');
@@ -97,6 +127,50 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
     excludedContainer.style.borderRadius = '4px';
     excludedContainer.style.display = 'none';
     container.appendChild(excludedContainer);
+
+    function toggleFilter(threshold, button) {
+        if (isFiltered && activeThreshold === threshold) {
+            // Deactivate filter
+            filteredData = [...data];
+            excludedPoints = [];
+            isFiltered = false;
+            activeThreshold = null;
+            excludedContainer.style.display = 'none';
+            button.style.backgroundColor = '#4a4a4a';
+        } else {
+            // Activate filter
+            excludedPoints = [];
+            filteredData = data.map((value, index) => {
+                if (Math.abs(value) > threshold) {
+                    excludedPoints.push({
+                        raceNumber: index + 1,
+                        value: value
+                    });
+                    return null;
+                }
+                return value;
+            }).filter(value => value !== null);
+            isFiltered = true;
+            activeThreshold = threshold;
+
+            // Reset all filter buttons to default color
+            filterButtonsContainer.querySelectorAll('button').forEach(btn => {
+                btn.style.backgroundColor = '#4a4a4a';
+            });
+            // Set active button color
+            button.style.backgroundColor = '#3cb371';
+
+            if (excludedPoints.length > 0) {
+                excludedContainer.style.display = 'block';
+                excludedContainer.innerHTML = '<strong>Excluded Points:</strong><br>' +
+                    excludedPoints.map(point => 
+                        `Race ${point.raceNumber}: ${point.value.toFixed(3)}%`
+                    ).join('<br>');
+            }
+        }
+        updateChart();
+        if (trendOnlyGraph) updateTrendOnlyGraph();
+    }
 
     function calculateTrendSegments(data, numSegments) {
         const segmentLength = Math.floor(data.length / numSegments);
@@ -120,35 +194,68 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         return trends;
     }
 
-    function toggleFilter(threshold) {
-        if (isFiltered) {
-            filteredData = [...data];
-            excludedPoints = [];
-            isFiltered = false;
-            excludedContainer.style.display = 'none';
-        } else {
-            excludedPoints = [];
-            filteredData = data.map((value, index) => {
-                if (Math.abs(value) > threshold) {
-                    excludedPoints.push({
-                        raceNumber: index + 1,
-                        value: value
-                    });
-                    return null;
-                }
-                return value;
-            }).filter(value => value !== null);
-            isFiltered = true;
-
-            if (excludedPoints.length > 0) {
-                excludedContainer.style.display = 'block';
-                excludedContainer.innerHTML = '<strong>Excluded Points:</strong><br>' +
-                    excludedPoints.map(point => 
-                        `Race ${point.raceNumber}: ${point.value.toFixed(3)}%`
-                    ).join('<br>');
-            }
+    function createTrendOnlyGraph() {
+        if (!trendOnlyGraph) {
+            const trendContainer = document.createElement('div');
+            trendContainer.style.width = '100%';
+            trendContainer.style.height = '400px';
+            trendContainer.style.marginTop = '20px';
+            container.appendChild(trendContainer);
+            trendOnlyGraph = trendContainer;
         }
-        updateChart();
+        updateTrendOnlyGraph();
+    }
+
+    function updateTrendOnlyGraph() {
+        const trends = calculateTrendSegments(filteredData, currentSegments);
+        const maxDiff = Math.max(...filteredData);
+        const minDiff = Math.min(...filteredData);
+        const padding = (maxDiff - minDiff) * 0.1;
+
+        const trendSeries = trends.map((segment, index) => ({
+            name: `Trend ${currentSegments > 1 ? (index + 1) : ''}`,
+            data: Array.from({ length: segment.end - segment.start + 1 }, (_, i) => {
+                const x = segment.start + i;
+                return [x, segment.trend.m * x + segment.trend.b];
+            }),
+            color: '#82ca9d'
+        }));
+
+        Highcharts.chart(trendOnlyGraph, {
+            chart: {
+                type: 'line',
+                height: '400px'
+            },
+            title: {
+                text: 'Trend Lines Only'
+            },
+            xAxis: {
+                title: {
+                    text: 'Race Number'
+                },
+                allowDecimals: false
+            },
+            yAxis: {
+                title: {
+                    text: 'Delta %'
+                },
+                min: minDiff - padding,
+                max: maxDiff + padding,
+                labels: {
+                    format: '{value}%'
+                }
+            },
+            tooltip: {
+                formatter: function() {
+                    return `Race ${this.x}<br/>
+                            ${this.series.name}: ${this.y.toFixed(3)}%`;
+                }
+            },
+            legend: {
+                enabled: currentSegments > 1
+            },
+            series: trendSeries
+        });
     }
 
     function updateChart() {
@@ -157,15 +264,11 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
             y: parseFloat(percentage)
         }));
 
-        // Calculate trend segments
         const trends = calculateTrendSegments(filteredData, currentSegments);
-        
-        // Calculate y-axis domain with padding
         const maxDiff = Math.max(...filteredData);
         const minDiff = Math.min(...filteredData);
         const padding = (maxDiff - minDiff) * 0.1;
 
-        // Create trend line series data
         const trendSeries = trends.map((segment, index) => ({
             name: `Trend ${currentSegments > 1 ? (index + 1) : ''}`,
             data: Array.from({ length: segment.end - segment.start + 1 }, (_, i) => {
@@ -218,7 +321,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 {
                     name: 'Qualifying Gap',
                     data: chartData.map(point => [point.x, point.y]),
-                    color: '#00008B', // Changed to dark blue
+                    color: '#00008B',
                     marker: {
                         enabled: true,
                         radius: 4
@@ -229,12 +332,10 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         });
     }
 
-    // Create the graph container
     const graphContainer = document.createElement('div');
     graphContainer.style.width = '100%';
     graphContainer.style.height = '400px';
     container.appendChild(graphContainer);
 
-    // Initial chart creation
     updateChart();
 }
