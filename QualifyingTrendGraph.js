@@ -178,37 +178,51 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
     function calculateTrends(data) {
         if (data.length < 2) return [];
     
-        // Calculate points per segment
-        const pointsPerSegment = Math.ceil(data.length / state.currentSegments);  // Use state.currentSegments
+        // Calculate points per segment, ensuring we include all points
+        const pointsPerSegment = Math.ceil(data.length / state.currentSegments);
         
-        // Create segments
+        // Create segments with different colors for visibility
+        const colors = ['#3cb371', '#1e90ff', '#ff6b6b', '#ffd700']; // Different colors for each segment
         const segments = [];
-        for (let i = 0; i < state.currentSegments; i++) {  // Use state.currentSegments
+    
+        for (let i = 0; i < state.currentSegments; i++) {
             const start = i * pointsPerSegment;
             const end = Math.min(start + pointsPerSegment, data.length);
             const segmentData = data.slice(start, end);
             
             if (segmentData.length > 1) {
-                // Prepare data for linear regression
-                const points = segmentData.map(point => [point[0], point[1]]);
+                // Calculate linear regression for this segment
+                const xValues = segmentData.map(d => d[0]);
+                const yValues = segmentData.map(d => d[1]);
+                const xMean = xValues.reduce((a, b) => a + b, 0) / xValues.length;
+                const yMean = yValues.reduce((a, b) => a + b, 0) / yValues.length;
                 
-                // Calculate linear regression
-                const trend = ss.linearRegression(points);
-                const firstX = segmentData[0][0];
-                const lastX = segmentData[segmentData.length - 1][0];
+                // Calculate slope and intercept
+                let numerator = 0;
+                let denominator = 0;
+                for (let j = 0; j < xValues.length; j++) {
+                    numerator += (xValues[j] - xMean) * (yValues[j] - yMean);
+                    denominator += Math.pow(xValues[j] - xMean, 2);
+                }
                 
-                // Generate trend line points
+                const slope = numerator / denominator;
+                const intercept = yMean - slope * xMean;
+                
+                // Generate trend line points only for this segment
                 const trendData = [];
+                const firstX = xValues[0];
+                const lastX = xValues[xValues.length - 1];
+                
                 for (let x = firstX; x <= lastX; x++) {
-                    const y = trend.m * x + trend.b;
+                    const y = slope * x + intercept;
                     trendData.push([x, Number(y.toFixed(3))]);
                 }
                 
                 segments.push({
-                    name: `Trend ${state.currentSegments > 1 ? (i + 1) : ''}`,  // Use state.currentSegments
+                    name: `Trend ${state.currentSegments > 1 ? (i + 1) : ''}`,
                     data: trendData,
                     dashStyle: 'solid',
-                    color: '#3cb371',
+                    color: colors[i % colors.length], // Use different colors for each segment
                     lineWidth: 4,
                     marker: { enabled: false }
                 });
