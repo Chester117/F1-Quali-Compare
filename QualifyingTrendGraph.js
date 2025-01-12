@@ -319,21 +319,27 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         } else {
             state.excludedPoints = [];
             state.filteredData = data.map((value, index) => {
-                if (Math.abs(value) > threshold) {
-                    state.excludedPoints.push({ raceNumber: index + 1, value: Number(value.toFixed(3)) });
+                const absValue = Math.abs(value);
+                if (absValue > threshold) {
+                    state.excludedPoints.push({ 
+                        raceNumber: index + 1, 
+                        value: Number(value.toFixed(3)) 
+                    });
                     return null;
                 }
-                return Number(value.toFixed(3));
+                return value;
             });
             state.activeThreshold = threshold;
             
             if (state.excludedPoints.length) {
                 showExcludedPoints();
+            } else {
+                container.querySelector('.excluded-points')?.remove();
             }
         }
         updateCharts();
     }
-
+    
     function showExcludedPoints() {
         let excludedDiv = container.querySelector('.excluded-points');
         if (!excludedDiv) {
