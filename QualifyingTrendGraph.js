@@ -4,28 +4,17 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
     let isFiltered = false;
     let currentSegments = 1;
     let activeThreshold = null;
-    let trendOnlyGraph = null;
-
-    // Create main controls container
-    const controlsContainer = document.createElement('div');
-    controlsContainer.style.textAlign = 'center';
-    controlsContainer.style.marginBottom = '20px';
-    container.appendChild(controlsContainer);
 
     // Create filter buttons container
     const filterButtonsContainer = document.createElement('div');
+    filterButtonsContainer.style.textAlign = 'center';
     filterButtonsContainer.style.marginBottom = '10px';
-    controlsContainer.appendChild(filterButtonsContainer);
+    container.appendChild(filterButtonsContainer);
 
     // Create segment selector container
     const segmentContainer = document.createElement('div');
     segmentContainer.style.marginBottom = '10px';
-    controlsContainer.appendChild(segmentContainer);
-
-    // Create trend-only graph button container
-    const trendButtonContainer = document.createElement('div');
-    trendButtonContainer.style.marginBottom = '10px';
-    controlsContainer.appendChild(trendButtonContainer);
+    container.appendChild(segmentContainer);
 
     // Add segment selector label
     const segmentLabel = document.createElement('span');
@@ -62,7 +51,6 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
             button.style.backgroundColor = '#666666';
             currentSegments = segments;
             updateChart();
-            if (trendOnlyGraph) updateTrendOnlyGraph();
         };
         segmentContainer.appendChild(button);
     });
@@ -86,7 +74,6 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         button.style.border = 'none';
         button.style.borderRadius = '4px';
         button.style.cursor = 'pointer';
-        button.style.transition = 'background-color 0.3s';
 
         button.addEventListener('mouseover', () => {
             button.style.backgroundColor = activeThreshold === threshold ? '#2d862d' : '#666666';
@@ -99,26 +86,6 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         filterButtonsContainer.appendChild(button);
     });
 
-    // Create trend-only graph button
-    const trendButton = document.createElement('button');
-    trendButton.textContent = 'Show Trend-Only Graph';
-    trendButton.style.padding = '8px 16px';
-    trendButton.style.backgroundColor = '#4a4a4a';
-    trendButton.style.color = 'white';
-    trendButton.style.border = 'none';
-    trendButton.style.borderRadius = '4px';
-    trendButton.style.cursor = 'pointer';
-
-    trendButton.addEventListener('mouseover', () => {
-        trendButton.style.backgroundColor = '#666666';
-    });
-    trendButton.addEventListener('mouseout', () => {
-        trendButton.style.backgroundColor = '#4a4a4a';
-    });
-
-    trendButton.onclick = createTrendOnlyGraph;
-    trendButtonContainer.appendChild(trendButton);
-
     // Create container for excluded points
     const excludedContainer = document.createElement('div');
     excludedContainer.style.marginTop = '20px';
@@ -128,9 +95,14 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
     excludedContainer.style.display = 'none';
     container.appendChild(excludedContainer);
 
+    // Create the graph container
+    const graphContainer = document.createElement('div');
+    graphContainer.style.width = '100%';
+    graphContainer.style.height = '400px';
+    container.appendChild(graphContainer);
+
     function toggleFilter(threshold, button) {
         if (isFiltered && activeThreshold === threshold) {
-            // Deactivate filter
             filteredData = [...data];
             excludedPoints = [];
             isFiltered = false;
@@ -138,28 +110,25 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
             excludedContainer.style.display = 'none';
             button.style.backgroundColor = '#4a4a4a';
         } else {
-            // Activate filter
             excludedPoints = [];
             filteredData = data.map((value, index) => {
                 if (Math.abs(value) > threshold) {
                     excludedPoints.push({
                         raceNumber: index + 1,
-                        value: Number(parseFloat(value).toFixed(3))
+                        value: Number(value.toFixed(3))
                     });
                     return null;
                 }
-                return Number(parseFloat(value).toFixed(3));
+                return Number(value.toFixed(3));
             }).filter(value => value !== null);
             isFiltered = true;
             activeThreshold = threshold;
-    
-            // Reset all filter buttons to default color
+
             filterButtonsContainer.querySelectorAll('button').forEach(btn => {
                 btn.style.backgroundColor = '#4a4a4a';
             });
-            // Set active button color
             button.style.backgroundColor = '#3cb371';
-    
+
             if (excludedPoints.length > 0) {
                 excludedContainer.style.display = 'block';
                 excludedContainer.innerHTML = '<strong>Excluded Points:</strong><br>' +
@@ -169,16 +138,15 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
             }
         }
         updateChart();
-        if (trendOnlyGraph) updateTrendOnlyGraph();
     }
 
-    function calculateTrendSegments(data, numSegments) {
-        const segmentLength = Math.floor(data.length / numSegments);
+    function calculateTrendSegments(data) {
+        const segmentLength = Math.floor(data.length / currentSegments);
         const trends = [];
 
-        for (let i = 0; i < numSegments; i++) {
+        for (let i = 0; i < currentSegments; i++) {
             const start = i * segmentLength;
-            const end = i === numSegments - 1 ? data.length : (i + 1) * segmentLength;
+            const end = i === currentSegments - 1 ? data.length : (i + 1) * segmentLength;
             const segmentData = data.slice(start, end);
             
             const points = segmentData.map((y, index) => [start + index + 1, parseFloat(y)]);
@@ -194,89 +162,22 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         return trends;
     }
 
-    function createTrendOnlyGraph() {
-        if (!trendOnlyGraph) {
-            const trendContainer = document.createElement('div');
-            trendContainer.style.width = '100%';
-            trendContainer.style.height = '400px';
-            trendContainer.style.marginTop = '20px';
-            container.appendChild(trendContainer);
-            trendOnlyGraph = trendContainer;
-        }
-        updateTrendOnlyGraph();
-    }
+    function updateChart() {
+        const chartData = filteredData.map((percentage, index) => ({
+            x: index + 1,
+            y: Number(percentage.toFixed(3))
+        }));
 
-    function updateTrendOnlyGraph() {
-        const trends = calculateTrendSegments(filteredData, currentSegments);
+        const trends = calculateTrendSegments(filteredData);
         const maxDiff = Math.max(...filteredData);
         const minDiff = Math.min(...filteredData);
         const padding = (maxDiff - minDiff) * 0.1;
-    
+
         const trendSeries = trends.map((segment, index) => ({
             name: `Trend ${currentSegments > 1 ? (index + 1) : ''}`,
             data: Array.from({ length: segment.end - segment.start + 1 }, (_, i) => {
                 const x = segment.start + i;
                 return [x, Number((segment.trend.m * x + segment.trend.b).toFixed(3))];
-            }),
-            color: '#82ca9d'
-        }));
-    
-        Highcharts.chart(trendOnlyGraph, {
-            chart: {
-                type: 'line',
-                height: '400px'
-            },
-            title: {
-                text: 'Trend Lines Only'
-            },
-            xAxis: {
-                title: {
-                    text: 'Race Number'
-                },
-                allowDecimals: false
-            },
-            yAxis: {
-                title: {
-                    text: 'Delta %'
-                },
-                min: minDiff - padding,
-                max: maxDiff + padding,
-                labels: {
-                    format: '{value:.3f}%'
-                }
-            },
-            tooltip: {
-                formatter: function() {
-                    const value = parseFloat(this.y).toFixed(3);
-                    const text = `Race ${this.x}<br/>
-                            ${this.series.name}: ${value}%`;
-                    return text;
-                },
-                useHTML: true
-            },
-            legend: {
-                enabled: currentSegments > 1
-            },
-            series: trendSeries
-        });
-    }
-
-    function updateChart() {
-        const chartData = filteredData.map((percentage, index) => ({
-            x: index + 1,
-            y: parseFloat(percentage)
-        }));
-
-        const trends = calculateTrendSegments(filteredData, currentSegments);
-        const maxDiff = Math.max(...filteredData);
-        const minDiff = Math.min(...filteredData);
-        const padding = (maxDiff - minDiff) * 0.1;
-
-        const trendSeries = trends.map((segment, index) => ({
-            name: `Trend ${currentSegments > 1 ? (index + 1) : ''}`,
-            data: Array.from({ length: segment.end - segment.start + 1 }, (_, i) => {
-                const x = segment.start + i;
-                return [x, segment.trend.m * x + segment.trend.b];
             }),
             dashStyle: 'shortdash',
             color: '#82ca9d',
@@ -287,11 +188,6 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
     }
 
     function createChart(chartData, trendSeries, yMin, yMax) {
-    // Get driver names from existing table headers
-        const headers = document.querySelectorAll('th');
-        const driver1Name = headers[2].textContent;
-        const driver2Name = headers[3].textContent;
-    
         Highcharts.chart(graphContainer, {
             chart: {
                 type: 'line',
@@ -304,8 +200,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 title: {
                     text: 'Race Number'
                 },
-                allowDecimals: false,
-                gridLineWidth: 1
+                allowDecimals: false
             },
             yAxis: {
                 title: {
@@ -322,12 +217,6 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                     value: 0,
                     zIndex: 2
                 }],
-                // Add labels for which driver is faster
-                labels: {
-                    formatter: function() {
-                        return this.value.toFixed(3) + '%';
-                    }
-                },
                 plotBands: [{
                     from: yMin,
                     to: 0,
@@ -356,14 +245,33 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                     }
                 }]
             },
-            // Rest of the config remains the same
+            tooltip: {
+                formatter: function() {
+                    const value = Number(this.y).toFixed(3);
+                    const text = `Race ${this.x}<br/>
+                            ${this.series.name}: ${value}%`;
+                    return text;
+                },
+                useHTML: true
+            },
+            legend: {
+                enabled: true
+            },
+            series: [
+                {
+                    name: 'Qualifying Gap',
+                    data: chartData.map(point => [point.x, point.y]),
+                    color: '#00008B',
+                    marker: {
+                        enabled: true,
+                        radius: 4
+                    }
+                },
+                ...trendSeries
+            ]
         });
     }
 
-    const graphContainer = document.createElement('div');
-    graphContainer.style.width = '100%';
-    graphContainer.style.height = '400px';
-    container.appendChild(graphContainer);
-
+    // Initial chart creation
     updateChart();
 }
