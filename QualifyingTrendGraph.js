@@ -38,191 +38,132 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
     //////////////////////////////////////////////////////////////////////////////////////
     
     function createControls() {
-        // Create a single row for all controls
-        const controlRow = document.createElement('div');
-        controlRow.style.cssText = 'display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px; margin-bottom: 10px;';
-        
-        // Segment controls
-        const segmentContainer = document.createElement('div');
-        segmentContainer.style.display = 'flex';
-        segmentContainer.style.alignItems = 'center';
-        segmentContainer.style.gap = '5px';
-        
-        const segmentLabel = document.createElement('span');
-        segmentLabel.textContent = 'Trend line segments:';
-        segmentContainer.appendChild(segmentLabel);
-        
-        const segmentSelect = Object.assign(document.createElement('select'), {
-            className: 'selector',
-            onchange: (e) => {
-                currentSegments = parseInt(e.target.value);
-                updateCharts();
-            },
-            style: `
-                background-color: white;
-                color: #333;
-                padding: 5px 10px;
-                width: 40px;
-                border: 1px solid #ddd;
-            `
-        });
-        
-        [1, 2, 3, 4].forEach(segments => {
-            const option = document.createElement('option');
-            option.value = segments;
-            option.text = segments;
-            segmentSelect.appendChild(option);
-        });
-        segmentContainer.appendChild(segmentSelect);
-        controlRow.appendChild(segmentContainer);
-        
-        // Filter dropdown
-        const filterSelect = Object.assign(document.createElement('select'), {
-            className: 'selector',
-            onchange: (e) => {
-                const threshold = parseFloat(e.target.value);
-                if (threshold === 0) {
-                    filteredData = [...data];
-                    excludedPoints = [];
-                    activeThreshold = null;
-                    elements.excluded.style.display = 'none';
-                } else {
-                    excludedPoints = [];
-                    filteredData = data.map((value, index) => {
-                        if (Math.abs(value) > threshold) {
-                            excludedPoints.push({ raceNumber: index + 1, value: Number(value.toFixed(3)) });
-                            return null;
-                        }
-                        return Number(value.toFixed(3));
-                    });
-                    activeThreshold = threshold;
-                    
-                    if (excludedPoints.length) {
-                        elements.excluded.style.display = 'block';
-                        elements.excluded.innerHTML = '<strong>Excluded Points:</strong><br>' +
-                            excludedPoints.map(p => `Race ${p.raceNumber}: ${p.value}%`).join('<br>');
-                    }
-                }
-                updateCharts();
-            },
-            style: `
-                background-color: white;
-                color: #333;
-                padding: 5px 10px;
-            `
-        });
-        
-        const defaultOption = document.createElement('option');
-        defaultOption.value = "0";
-        defaultOption.text = "No Filter";
-        filterSelect.appendChild(defaultOption);
-        
-        [1, 1.5, 2, 3, 5].forEach(threshold => {
-            const option = document.createElement('option');
-            option.value = threshold;
-            option.text = `Filter >${threshold}%`;
-            filterSelect.appendChild(option);
-        });
-        controlRow.appendChild(filterSelect);
-        
-        // Control buttons
-        const createButton = (text, onClick, isToggle = false) => {
-            const button = document.createElement('button');
-            button.textContent = text;
-            button.style.cssText = `
-                margin: 0 5px;
-                padding: 8px 16px;
-                background-color: #4a4a4a;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                cursor: pointer;
-                transition: background-color 0.3s;
-            `;
-            
-            button.addEventListener('click', () => {
-                if (isToggle) {
-                    onClick();
-                } else {
-                    onClick(button);
-                }
-            });
-            
-            return button;
-        };
-        
-        const buttonsContainer = document.createElement('div');
-        buttonsContainer.style.display = 'flex';
-        buttonsContainer.style.alignItems = 'center';
-        buttonsContainer.style.gap = '10px';
-        
-        const zeroLineButton = createButton('Zero Line', () => {
-            isZeroLineRed = !isZeroLineRed;
-            zeroLineButton.style.backgroundColor = isZeroLineRed ? '#8b0000' : '#4a4a4a';
-            
-            if (mainChart) {
-                const mainZeroLine = mainChart.yAxis[0].plotLinesAndBands[0];
-                mainZeroLine.svgElem.attr({
-                    stroke: isZeroLineRed ? '#ff3333' : '#CCCCCC'
-                });
-            }
-            
-            if (trendChart) {
-                const trendZeroLine = trendChart.yAxis[0].plotLinesAndBands[0];
-                trendZeroLine.svgElem.attr({
-                    stroke: isZeroLineRed ? '#ff3333' : '#CCCCCC'
-                });
-            }
-        });
+    const controlRow = document.createElement('div');
+    controlRow.style.cssText = 'display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px; margin-bottom: 10px;';
     
-        // New Trend toggle button
-        let showMainGraphTrend = true;
-        const trendButton = createButton('Trend', () => {
-            showMainGraphTrend = !showMainGraphTrend;
-            trendButton.style.backgroundColor = showMainGraphTrend ? '#3cb371' : '#4a4a4a';
-            updateChart();
-        });
-        
-        const separateTrendButton = createButton('Separate Trend Graph', () => {
-            // Check if trendOnlyGraph exists and is in the DOM
-            const existingGraph = container.querySelector('.trend-only-graph');
-            
-            if (existingGraph) {
-                // Remove the existing graph and its toggle button
-                container.removeChild(existingGraph);
-                const toggleButton = container.querySelector('.trend-data-toggle');
-                if (toggleButton) {
-                    container.removeChild(toggleButton);
-                }
-                separateTrendButton.style.backgroundColor = '#4a4a4a';
-                trendOnlyGraph = null;
-                showTrendInMain = true;
-            } else {
-                // Create new graph
-                const graphContainer = Object.assign(document.createElement('div'), {
-                    className: 'trend-only-graph',
-                    style: 'width: 100%; height: 400px; margin-top: 20px'
-                });
-                container.appendChild(graphContainer);
-                
-                const toggleButton = createButton('Show Data Points', () => {
-                    showDataPointsInTrend = !showDataPointsInTrend;
-                    toggleButton.style.backgroundColor = showDataPointsInTrend ? '#3cb371' : '#4a4a4a';
-                    updateTrendOnlyGraph();
-                }, true);
-                toggleButton.className = 'trend-data-toggle';
-                toggleButton.style.marginTop = '10px';
-                container.appendChild(toggleButton);
-                
-                trendOnlyGraph = graphContainer;
-                updateTrendOnlyGraph();
-                separateTrendButton.style.backgroundColor = '#3cb371';
-                showTrendInMain = false;
-            }
-            
-            updateChart();
-        });
+    // Segment controls
+    const segmentContainer = document.createElement('div');
+    segmentContainer.style.display = 'flex';
+    segmentContainer.style.alignItems = 'center';
+    segmentContainer.style.gap = '5px';
+    
+    const segmentLabel = document.createElement('span');
+    segmentLabel.textContent = 'Trend line segments:';
+    segmentContainer.appendChild(segmentLabel);
+    
+    const segmentSelect = Object.assign(document.createElement('select'), {
+        className: 'selector',
+        onchange: (e) => {
+            currentSegments = parseInt(e.target.value);
+            updateCharts();
+        },
+        style: `
+            background-color: white;
+            color: #333;
+            padding: 5px 10px;
+            width: 80px;
+            border: 1px solid #ddd;
+        `
+    });
+    
+    [1, 2, 3, 4].forEach(segments => {
+        const option = document.createElement('option');
+        option.value = segments;
+        option.text = segments;
+        segmentSelect.appendChild(option);
+    });
+    segmentContainer.appendChild(segmentSelect);
+    controlRow.appendChild(segmentContainer);
+    
+    // Filter dropdown
+    const filterSelect = Object.assign(document.createElement('select'), {
+        className: 'selector',
+        onchange: (e) => {
+            const threshold = parseFloat(e.target.value);
+            handleFilterChange(threshold);
+        },
+        style: `
+            background-color: white;
+            color: #333;
+            padding: 5px 10px;
+            width: 120px;
+            border: 1px solid #ddd;
+        `
+    });
+    
+    [
+        { value: "0", text: "No Filter" },
+        ...["1", "1.5", "2", "3", "5"].map(val => ({
+            value: val,
+            text: `Filter >${val}%`
+        }))
+    ].forEach(opt => {
+        const option = document.createElement('option');
+        option.value = opt.value;
+        option.text = opt.text;
+        filterSelect.appendChild(option);
+    });
+    controlRow.appendChild(filterSelect);
 
+    // Control buttons
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.style.display = 'flex';
+    buttonsContainer.style.alignItems = 'center';
+    buttonsContainer.style.gap = '10px';
+
+    // Zero Line button with immediate update
+    const zeroLineButton = createButton('Zero Line', () => {
+        isZeroLineRed = !isZeroLineRed;
+        zeroLineButton.style.backgroundColor = isZeroLineRed ? '#8b0000' : '#4a4a4a';
+        updateCharts(); // Immediately update charts
+    });
+
+    // Separate Trend Graph button
+    const separateTrendButton = createButton('Separate Trend Graph', () => {
+        const existingGraph = container.querySelector('.trend-only-graph');
+        
+        if (existingGraph) {
+            container.removeChild(existingGraph);
+            const toggleButton = container.querySelector('.trend-data-toggle');
+            if (toggleButton) {
+                container.removeChild(toggleButton);
+            }
+            separateTrendButton.style.backgroundColor = '#4a4a4a';
+            trendOnlyGraph = null;
+            showTrendInMain = true;
+        } else {
+            const graphContainer = Object.assign(document.createElement('div'), {
+                className: 'trend-only-graph',
+                style: 'width: 100%; height: 400px; margin-top: 20px'
+            });
+            container.appendChild(graphContainer);
+            
+            const toggleButton = createButton('Show Data Points', () => {
+                showDataPointsInTrend = !showDataPointsInTrend;
+                toggleButton.style.backgroundColor = showDataPointsInTrend ? '#3cb371' : '#4a4a4a';
+                updateTrendOnlyGraph();
+            });
+            toggleButton.className = 'trend-data-toggle';
+            toggleButton.style.marginTop = '10px';
+            container.appendChild(toggleButton);
+            
+            trendOnlyGraph = graphContainer;
+            updateTrendOnlyGraph();
+            separateTrendButton.style.backgroundColor = '#3cb371';
+            showTrendInMain = false;
+        }
+        
+        updateChart();
+    });
+
+    buttonsContainer.appendChild(zeroLineButton);
+    buttonsContainer.appendChild(separateTrendButton);
+    controlRow.appendChild(buttonsContainer);
+
+    elements.segmentControls.innerHTML = '';
+    elements.segmentControls.appendChild(controlRow);
+}
+    
     //////////////////////////////////////////////////////////////////////////////////////
     //////////////////////////////////END OF Create controls//////////////////////////////
     //////////////////////////////////////////////////////////////////////////////////////
@@ -689,9 +630,10 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
 
     function updateCharts() {
         updateChart();
-        if (trendOnlyGraph) updateTrendOnlyGraph();
+        if (trendOnlyGraph) {
+            updateTrendOnlyGraph();
+        }
     }
-
     const graphContainer = Object.assign(document.createElement('div'), {
         style: 'width: 100%; height: 400px'
     });
