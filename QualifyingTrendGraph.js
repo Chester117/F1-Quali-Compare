@@ -146,7 +146,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
     function createSeries(data, trends, isTrendOnly) {
         if (isTrendOnly) {
             return [
-                ...(state.showDataPointsInTrend ? [{  // Use state.showDataPointsInTrend
+                ...(state.showDataPointsInTrend ? [{
                     name: 'Data Points',
                     data: data,
                     color: 'rgba(0, 0, 139, 0.15)',
@@ -170,7 +170,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 marker: { enabled: true, radius: 4 },
                 connectNulls: false
             },
-            ...(state.showTrendInMain ? trends : [])  // Use state.showTrendInMain
+            ...(state.showTrendInMain ? trends : [])
         ];
     }
 
@@ -182,7 +182,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         const pointsPerSegment = Math.ceil(data.length / state.currentSegments);
         
         // Create segments with different colors for visibility
-        const colors = ['#3cb371', '#1e90ff', '#ff6b6b', '#ffd700']; // Different colors for each segment
+        const colors = ['#3cb371', '#1e90ff', '#ff6b6b', '#ffd700'];
         const segments = [];
     
         for (let i = 0; i < state.currentSegments; i++) {
@@ -197,7 +197,6 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 const xMean = xValues.reduce((a, b) => a + b, 0) / xValues.length;
                 const yMean = yValues.reduce((a, b) => a + b, 0) / yValues.length;
                 
-                // Calculate slope and intercept
                 let numerator = 0;
                 let denominator = 0;
                 for (let j = 0; j < xValues.length; j++) {
@@ -222,7 +221,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                     name: `Trend ${state.currentSegments > 1 ? (i + 1) : ''}`,
                     data: trendData,
                     dashStyle: 'solid',
-                    color: colors[i % colors.length], // Use different colors for each segment
+                    color: colors[i % colors.length],
                     lineWidth: 4,
                     marker: { enabled: false }
                 });
@@ -251,7 +250,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         const segmentSelect = createSelect(
             [1, 2, 3, 4].map(n => ({ value: n, text: n })),
             e => {
-                currentSegments = parseInt(e.target.value);
+                state.currentSegments = parseInt(e.target.value);
                 updateCharts();
             }
         );
@@ -287,15 +286,24 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         buttons.forEach(button => controlRow.appendChild(button));
     
         container.appendChild(controlRow);
-    }
+}
 
     // Chart updates
     function updateCharts() {
         const chartData = prepareChartData();
+        
+        // Update main chart
+        if (state.mainChart) {
+            state.mainChart.destroy();
+        }
         state.mainChart = Highcharts.chart(container.querySelector('.main-chart'), 
             getChartConfig(chartData.data, chartData.trends, chartData.yMin, chartData.yMax));
         
+        // Update trend chart if it exists
         if (state.trendOnlyGraph) {
+            if (state.trendChart) {
+                state.trendChart.destroy();
+            }
             state.trendChart = Highcharts.chart(state.trendOnlyGraph, 
                 getChartConfig(chartData.data, chartData.trends, chartData.yMin, chartData.yMax, true));
         }
