@@ -1,12 +1,12 @@
 function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
-    // Transform data for the graph
-    const chartData = data.map((item, index) => ({
+    // Transform the percentage data directly
+    const chartData = data.map((percentage, index) => ({
         x: index + 1,
-        y: item
+        y: parseFloat(percentage) // Convert to number if it's not already
     }));
 
     // Calculate trend line using simple-statistics
-    const points = data.map((y, x) => [x + 1, y]);
+    const points = data.map((y, x) => [x + 1, parseFloat(y)]);
     const trend = ss.linearRegression(points);
     const trendData = points.map(([x, _]) => ({
         x: x,
@@ -25,19 +25,23 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
             height: '400px'
         },
         title: {
-            text: 'Qualifying Performance Trend'
+            text: 'Qualifying Gap Trend'
         },
         xAxis: {
             title: {
                 text: 'Race Number'
-            }
+            },
+            allowDecimals: false
         },
         yAxis: {
             title: {
-                text: 'Gap (%)'
+                text: 'Delta %'
             },
             min: minDiff - padding,
-            max: maxDiff + padding
+            max: maxDiff + padding,
+            labels: {
+                format: '{value}%'
+            }
         },
         tooltip: {
             formatter: function() {
@@ -51,12 +55,19 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         series: [{
             name: 'Qualifying Gap',
             data: chartData.map(point => [point.x, point.y]),
-            color: '#8884d8'
+            color: '#8884d8',
+            marker: {
+                enabled: true,
+                radius: 4
+            }
         }, {
             name: 'Trend',
             data: trendData.map(point => [point.x, point.y]),
             dashStyle: 'shortdash',
-            color: '#82ca9d'
+            color: '#82ca9d',
+            marker: {
+                enabled: false
+            }
         }]
     });
 }
