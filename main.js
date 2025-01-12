@@ -324,6 +324,13 @@ function displayMedianResults(currentTable) {
         labelCell.colSpan = 2;
         if (index === 0) labelCell.style.borderTop = "4px solid #ddd";
         labelCell.textContent = data.label;
+        
+        // Add dark gray background for time difference rows
+        if (data.label.includes("time difference")) {
+            labelCell.style.backgroundColor = "#808080";
+            labelCell.style.color = "white";
+        }
+        
         tr.appendChild(labelCell);
         
         // Value cell
@@ -334,10 +341,41 @@ function displayMedianResults(currentTable) {
         valueCell.colSpan = 5;
         if (index === 0) valueCell.style.borderTop = "4px solid #ddd";
         
+        // Add dark gray background for time difference rows
+        if (data.label.includes("time difference")) {
+            valueCell.style.backgroundColor = "#808080";
+            valueCell.style.color = "white";
+        }
+        
         const result = data.getValue();
         valueCell.textContent = result ? result.text : 'N/A';
         tr.appendChild(valueCell);
     });
+
+    // Add bootstrap confidence interval row
+    if (currentTable.percentageDifferences.length >= 2) {
+        const ci = bootstrapConfidenceInterval(currentTable.percentageDifferences);
+        const tr = document.createElement("tr");
+        currentTable.table.appendChild(tr);
+
+        const labelCell = document.createElement("td");
+        labelCell.style.padding = "12px 6px";
+        labelCell.style.fontWeight = "bold";
+        labelCell.style.textAlign = "left";
+        labelCell.colSpan = 2;
+        labelCell.textContent = "95% CI (Bootstrap)";
+        tr.appendChild(labelCell);
+
+        const valueCell = document.createElement("td");
+        valueCell.style.padding = "12px 6px";
+        valueCell.style.fontWeight = "bold";
+        valueCell.style.textAlign = "center";
+        valueCell.colSpan = 5;
+        const lowerValue = Number(ci.lower).toFixed(3);
+        const upperValue = Number(ci.upper).toFixed(3);
+        valueCell.textContent = `[${lowerValue}%, ${upperValue}%]`;
+        tr.appendChild(valueCell);
+    }
 
     // Add qualifying score
     const qualyScoreTr = document.createElement("tr");
@@ -671,6 +709,40 @@ async function showHistoryResults() {
             ${tableRows.join('')}
         </table>
     `;
+}
+
+function bootstrapConfidenceInterval(data, confidence = 0.95, iterations = 10000) {
+    if (data.length < 2) return { lower: NaN, upper: NaN };
+    
+    // Function to calculate mean of an array
+    const calculateMean = arr => arr.reduce((a, b) => a + b, 0) / arr.length;
+    
+    // Function to sample with replacement
+    const sample = (arr) => {
+        const result = new Array(arr.length);
+        for (let i = 0; i < arr.length; i++) {
+            result[i] = arr[Math.floor(Math.random() * arr.length)];
+        }
+        return result;
+    };
+    
+    // Generate bootstrap samples and calculate means
+    const bootstrapMeans = new Array(iterations);
+    for (let i = 0; i < iterations; i++) {
+        bootstrapMeans[i] = calculateMean(sample(data));
+    }
+    
+    // Sort the means to find percentile-based confidence interval
+    bootstrapMeans.sort((a, b) => a - b);
+    
+    const alpha = 1 - confidence;
+    const lowerIndex = Math.floor((alpha / 2) * iterations);
+    const upperIndex = Math.floor((1 - alpha / 2) * iterations);
+    
+    return {
+        lower: bootstrapMeans[lowerIndex],
+        upper: bootstrapMeans[upperIndex]
+    };
 }
 
 
