@@ -3,13 +3,13 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
     const state = {
         filteredData: [...data],
         excludedPoints: [],
-        currentSegments: 1,
-        activeThreshold: null,
+        currentSegments: 3,           // Changed from 1 to 3
+        activeThreshold: 2,           // Changed from null to 2
         trendOnlyGraph: null,
         mainChart: null,
         trendChart: null,
-        isZeroLineRed: false,
-        showTrendInMain: true,
+        isZeroLineRed: true,         // Changed from false to true
+        showTrendInMain: false,       // Changed from true to false
         showDataPointsInTrend: false,
         driver1LastName: driver1Name.split(' ').pop(),
         driver2LastName: driver2Name.split(' ').pop()
@@ -439,5 +439,21 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
     container.appendChild(mainChartContainer);
 
     createControls();
+    
+    // Set initial filter value
+    handleFilterChange(2);
+    
+    // Create separate trend graph by default
+    const separateTrendButton = container.querySelector('button:nth-child(5)');
+    separateTrendButton.click();
+    
+    // Enable zero line by default
+    const zeroLineButton = container.querySelector('button:nth-child(3)');
+    zeroLineButton.click();
+    
+    // Set initial segment value
+    const segmentSelect = container.querySelector('select');
+    segmentSelect.value = '3';
+    
     updateCharts();
 }
