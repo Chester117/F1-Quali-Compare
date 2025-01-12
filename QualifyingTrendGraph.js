@@ -4,6 +4,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
     let isFiltered = false;
     let currentSegments = 1;
     let activeThreshold = null;
+    let trendOnlyGraph = null;
 
     // Create filter buttons container
     const filterButtonsContainer = document.createElement('div');
@@ -14,6 +15,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
     // Create segment selector container
     const segmentContainer = document.createElement('div');
     segmentContainer.style.marginBottom = '10px';
+    segmentContainer.style.textAlign = 'center';
     container.appendChild(segmentContainer);
 
     // Add segment selector label
@@ -51,9 +53,36 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
             button.style.backgroundColor = '#666666';
             currentSegments = segments;
             updateChart();
+            if (trendOnlyGraph) updateTrendOnlyGraph();
         };
         segmentContainer.appendChild(button);
     });
+
+    // Add separator and trend-only button
+    const separator = document.createElement('span');
+    separator.textContent = ' | ';
+    separator.style.margin = '0 10px';
+    segmentContainer.appendChild(separator);
+
+    const trendOnlyButton = document.createElement('button');
+    trendOnlyButton.textContent = 'Show Separate Trendline';
+    trendOnlyButton.style.margin = '0 5px';
+    trendOnlyButton.style.padding = '5px 10px';
+    trendOnlyButton.style.backgroundColor = '#4a4a4a';
+    trendOnlyButton.style.color = 'white';
+    trendOnlyButton.style.border = 'none';
+    trendOnlyButton.style.borderRadius = '4px';
+    trendOnlyButton.style.cursor = 'pointer';
+
+    trendOnlyButton.addEventListener('mouseover', () => {
+        trendOnlyButton.style.backgroundColor = '#666666';
+    });
+    trendOnlyButton.addEventListener('mouseout', () => {
+        trendOnlyButton.style.backgroundColor = '#4a4a4a';
+    });
+
+    trendOnlyButton.onclick = createTrendOnlyGraph;
+    segmentContainer.appendChild(trendOnlyButton);
 
     // Create filter buttons
     const filterButtons = [
@@ -138,6 +167,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
             }
         }
         updateChart();
+        if (trendOnlyGraph) updateTrendOnlyGraph();
     }
 
     function calculateTrendSegments(data) {
@@ -160,6 +190,107 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         }
 
         return trends;
+    }
+
+    function createTrendOnlyGraph() {
+        if (!trendOnlyGraph) {
+            trendOnlyGraph = document.createElement('div');
+            trendOnlyGraph.style.width = '100%';
+            trendOnlyGraph.style.height = '400px';
+            trendOnlyGraph.style.marginTop = '20px';
+            container.appendChild(trendOnlyGraph);
+            updateTrendOnlyGraph();
+        } else {
+            trendOnlyGraph.remove();
+            trendOnlyGraph = null;
+        }
+    }
+
+    function updateTrendOnlyGraph() {
+        if (!trendOnlyGraph) return;
+        
+        const trends = calculateTrendSegments(filteredData);
+        const maxDiff = Math.max(...filteredData);
+        const minDiff = Math.min(...filteredData);
+        const padding = (maxDiff - minDiff) * 0.1;
+
+        const trendSeries = trends.map((segment, index) => ({
+            name: `Trend ${currentSegments > 1 ? (index + 1) : ''}`,
+            data: Array.from({ length: segment.end - segment.start + 1 }, (_, i) => {
+                const x = segment.start + i;
+                return [x, Number((segment.trend.m * x + segment.trend.b).toFixed(3))];
+            }),
+            color: '#82ca9d'
+        }));
+
+        Highcharts.chart(trendOnlyGraph, {
+            chart: {
+                type: 'line',
+                height: '400px'
+            },
+            title: {
+                text: 'Trend Lines Only'
+            },
+            xAxis: {
+                title: {
+                    text: 'Race Number'
+                },
+                allowDecimals: false
+            },
+            yAxis: {
+                title: {
+                    text: 'Delta %'
+                },
+                min: minDiff - padding,
+                max: maxDiff + padding,
+                labels: {
+                    format: '{value:.1f}%'
+                },
+                plotLines: [{
+                    color: '#CCCCCC',
+                    width: 2,
+                    value: 0,
+                    zIndex: 2
+                }],
+                plotBands: [{
+                    from: 0,
+                    to: maxDiff + padding,
+                    color: 'rgba(0, 0, 0, 0.03)',
+                    label: {
+                        text: `${driver1Name} faster`,
+                        align: 'right',
+                        y: 5,
+                        x: -30,
+                        style: {
+                            color: '#666666'
+                        }
+                    }
+                }, {
+                    from: minDiff - padding,
+                    to: 0,
+                    color: 'rgba(0, 0, 0, 0.03)',
+                    label: {
+                        text: `${driver2Name} faster`,
+                        align: 'right',
+                        y: -5,
+                        x: -30,
+                        style: {
+                            color: '#666666'
+                        }
+                    }
+                }]
+            },
+            tooltip: {
+                formatter: function() {
+                    return `Race ${this.x}<br/>${this.series.name}: ${Number(this.y).toFixed(3)}%`;
+                },
+                useHTML: true
+            },
+            legend: {
+                enabled: currentSegments > 1
+            },
+            series: trendSeries
+        });
     }
 
     function updateChart() {
@@ -209,7 +340,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 min: yMin,
                 max: yMax,
                 labels: {
-                    format: '{value:.1f}%'  // Changed to 1 decimal point
+                    format: '{value:.1f}%'
                 },
                 plotLines: [{
                     color: '#CCCCCC',
@@ -218,27 +349,27 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                     zIndex: 2
                 }],
                 plotBands: [{
-                    from: 0,                   // Changed from yMin to 0
+                    from: 0,
                     to: yMax,
                     color: 'rgba(0, 0, 0, 0.03)',
                     label: {
-                        text: `${driver1Name} faster`,  // Swapped driver names
+                        text: `${driver1Name} faster`,
                         align: 'right',
                         y: 5,
-                        x: -30,                // Increased distance from axis
+                        x: -30,
                         style: {
                             color: '#666666'
                         }
                     }
                 }, {
                     from: yMin,
-                    to: 0,                     // Changed from yMax to 0
+                    to: 0,
                     color: 'rgba(0, 0, 0, 0.03)',
                     label: {
-                        text: `${driver2Name} faster`,  // Swapped driver names
+                        text: `${driver2Name} faster`,
                         align: 'right',
                         y: -5,
-                        x: -30,                // Increased distance from axis
+                        x: -30,
                         style: {
                             color: '#666666'
                         }
