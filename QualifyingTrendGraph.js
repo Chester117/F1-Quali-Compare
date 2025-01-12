@@ -152,12 +152,16 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                     color: 'rgba(0, 0, 139, 0.15)',
                     marker: { enabled: true, radius: 3 },
                     lineWidth: 1,
-                    connectNulls: false
+                    connectNulls: false,
+                    enableMouseTracking: false  // Disable hover effect
                 }] : []),
-                ...trends
+                ...trends.map(trend => ({
+                    ...trend,
+                    lineWidth: 4  // Thicker trend line
+                }))
             ];
         }
-
+    
         return [
             {
                 name: 'Qualifying Gap',
@@ -204,36 +208,56 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
     // UI Controls
     function createControls() {
         const controlRow = document.createElement('div');
-        controlRow.style.cssText = 'display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px; margin-bottom: 10px;';
-
+        controlRow.style.cssText = 'display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 20px; margin: 20px 0;';
+    
         // Segments control
+        const segmentControl = document.createElement('div');
+        segmentControl.style.display = 'flex';
+        segmentControl.style.alignItems = 'center';
+        segmentControl.style.gap = '8px';
+        
+        const segmentLabel = document.createElement('label');
+        segmentLabel.textContent = 'Trend Line Segments:';
+        segmentControl.appendChild(segmentLabel);
+        
         const segmentSelect = createSelect(
             [1, 2, 3, 4].map(n => ({ value: n, text: n })),
             e => {
-                state.currentSegments = parseInt(e.target.value);
+                currentSegments = parseInt(e.target.value);
                 updateCharts();
             }
         );
-        controlRow.appendChild(segmentSelect);
-
+        segmentControl.appendChild(segmentSelect);
+        controlRow.appendChild(segmentControl);
+    
         // Filter control
+        const filterControl = document.createElement('div');
+        filterControl.style.display = 'flex';
+        filterControl.style.alignItems = 'center';
+        filterControl.style.gap = '8px';
+        
+        const filterLabel = document.createElement('label');
+        filterLabel.textContent = 'Filter Extreme Value:';
+        filterControl.appendChild(filterLabel);
+        
         const filterSelect = createSelect(
             [
                 { value: 0, text: 'No Filter' },
-                ...([1, 1.5, 2, 3, 5].map(n => ({ value: n, text: `Filter >${n}%` })))
+                ...([1, 1.5, 2, 3, 5].map(n => ({ value: n, text: `>${n}%` })))
             ],
             e => handleFilterChange(parseFloat(e.target.value))
         );
-        controlRow.appendChild(filterSelect);
-
-        // Buttons
+        filterControl.appendChild(filterSelect);
+        controlRow.appendChild(filterControl);
+    
+        // Rest of the buttons
         const buttons = [
             createButton('Zero Line', toggleZeroLine),
             createButton('Trend', toggleTrend),
             createButton('Separate Trend', toggleSeparateTrend)
         ];
         buttons.forEach(button => controlRow.appendChild(button));
-
+    
         container.appendChild(controlRow);
     }
 
