@@ -24,13 +24,68 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         transition: 'background-color 0.3s'
     };
 
-    const elements = ['filterButtons', 'segmentControls', 'excluded'].reduce((acc, id) => {
-        acc[id] = document.createElement('div');
-        acc[id].style.textAlign = 'center';
-        acc[id].style.marginBottom = '10px';
-        container.appendChild(acc[id]);
-        return acc;
-    }, {});
+    // Create necessary container elements
+    const elements = {
+        filterButtons: document.createElement('div'),
+        segmentControls: document.createElement('div'),
+        excluded: document.createElement('div'),
+        graphContainer: document.createElement('div')
+    };
+
+    // Set up containers
+    Object.entries(elements).forEach(([key, element]) => {
+        element.style.textAlign = 'center';
+        element.style.marginBottom = '10px';
+        container.appendChild(element);
+    });
+
+    // Set specific styles for graph container
+    elements.graphContainer.style.width = '100%';
+    elements.graphContainer.style.height = '400px';
+
+    function createControls() {
+        // [Previous createControls code remains the same until the end]
+        ...
+
+        // Clear existing content and add the new control row
+        elements.segmentControls.innerHTML = '';
+        elements.segmentControls.appendChild(controlRow);
+        
+        // Update excluded points styling
+        Object.assign(elements.excluded.style, {
+            padding: '10px',
+            backgroundColor: '#f5f5f5',
+            borderRadius: '4px',
+            display: 'none',
+            width: '100%',
+            maxWidth: '100%',
+            boxSizing: 'border-box',
+            margin: '10px auto',
+            textAlign: 'center'
+        });
+    }
+
+    function updateChart() {
+        const { fullData, trends, yMin, yMax } = prepareChartData();
+        mainChart = Highcharts.chart(elements.graphContainer, getChartConfig(fullData, trends, yMin, yMax));
+    }
+
+    function updateTrendOnlyGraph() {
+        if (!trendOnlyGraph) return;
+        const { fullData, trends, yMin, yMax } = prepareChartData();
+        trendChart = Highcharts.chart(trendOnlyGraph, 
+            getChartConfig(fullData, trends, yMin, yMax, true));
+    }
+
+    function updateCharts() {
+        updateChart();
+        if (trendOnlyGraph) updateTrendOnlyGraph();
+    }
+    
+    // Initialize the graph
+    createControls();
+    updateChart();
+}
 
     
     //////////////////////////////////////////////////////////////////////////////////////
