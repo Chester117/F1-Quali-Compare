@@ -146,18 +146,18 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
     function createSeries(data, trends, isTrendOnly) {
         if (isTrendOnly) {
             return [
-                ...(showDataPointsInTrend ? [{
+                ...(state.showDataPointsInTrend ? [{  // Use state.showDataPointsInTrend
                     name: 'Data Points',
                     data: data,
                     color: 'rgba(0, 0, 139, 0.15)',
                     marker: { enabled: true, radius: 3 },
                     lineWidth: 1,
                     connectNulls: false,
-                    enableMouseTracking: false  // Disable hover effect
+                    enableMouseTracking: false
                 }] : []),
                 ...trends.map(trend => ({
                     ...trend,
-                    lineWidth: 4  // Thicker trend line
+                    lineWidth: 4
                 }))
             ];
         }
@@ -170,7 +170,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 marker: { enabled: true, radius: 4 },
                 connectNulls: false
             },
-            ...(showTrendInMain ? trends : [])
+            ...(state.showTrendInMain ? trends : [])  // Use state.showTrendInMain
         ];
     }
 
@@ -179,18 +179,18 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         if (data.length < 2) return [];
     
         // Calculate points per segment
-        const pointsPerSegment = Math.ceil(data.length / currentSegments);
+        const pointsPerSegment = Math.ceil(data.length / state.currentSegments);  // Use state.currentSegments
         
         // Create segments
         const segments = [];
-        for (let i = 0; i < currentSegments; i++) {
+        for (let i = 0; i < state.currentSegments; i++) {  // Use state.currentSegments
             const start = i * pointsPerSegment;
             const end = Math.min(start + pointsPerSegment, data.length);
             const segmentData = data.slice(start, end);
             
             if (segmentData.length > 1) {
                 // Prepare data for linear regression
-                const points = segmentData.map((point, index) => [point[0], point[1]]);
+                const points = segmentData.map(point => [point[0], point[1]]);
                 
                 // Calculate linear regression
                 const trend = ss.linearRegression(points);
@@ -205,7 +205,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 }
                 
                 segments.push({
-                    name: `Trend ${currentSegments > 1 ? (i + 1) : ''}`,
+                    name: `Trend ${state.currentSegments > 1 ? (i + 1) : ''}`,  // Use state.currentSegments
                     data: trendData,
                     dashStyle: 'solid',
                     color: '#3cb371',
