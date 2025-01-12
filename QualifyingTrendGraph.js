@@ -32,7 +32,11 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         return acc;
     }, {});
 
-    // Create controls
+    
+    //////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////// Create controls////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////
+    
     function createControls() {
         // Create a single row for all controls
         const controlRow = document.createElement('div');
@@ -58,7 +62,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 background-color: white;
                 color: #333;
                 padding: 5px 10px;
-                width: 150px;
+                width: 40px;
                 border: 1px solid #ddd;
             `
         });
@@ -170,11 +174,33 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 });
             }
         });
+    
+        // New Trend toggle button
+        let showMainGraphTrend = true;
+        const trendButton = createButton('Trend', () => {
+            showMainGraphTrend = !showMainGraphTrend;
+            trendButton.style.backgroundColor = showMainGraphTrend ? '#3cb371' : '#4a4a4a';
+            updateChart();
+        });
         
-        let trendGraphVisible = false;
-        const trendButton = createButton('Separate Trend Graph', () => {
-            if (!trendGraphVisible) {
+        const separateTrendButton = createButton('Separate Trend Graph', () => {
+            // Check if trendOnlyGraph exists and is in the DOM
+            const existingGraph = container.querySelector('.trend-only-graph');
+            
+            if (existingGraph) {
+                // Remove the existing graph and its toggle button
+                container.removeChild(existingGraph);
+                const toggleButton = container.querySelector('.trend-data-toggle');
+                if (toggleButton) {
+                    container.removeChild(toggleButton);
+                }
+                separateTrendButton.style.backgroundColor = '#4a4a4a';
+                trendOnlyGraph = null;
+                showTrendInMain = true;
+            } else {
+                // Create new graph
                 const graphContainer = Object.assign(document.createElement('div'), {
+                    className: 'trend-only-graph',
                     style: 'width: 100%; height: 400px; margin-top: 20px'
                 });
                 container.appendChild(graphContainer);
@@ -184,40 +210,23 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                     toggleButton.style.backgroundColor = showDataPointsInTrend ? '#3cb371' : '#4a4a4a';
                     updateTrendOnlyGraph();
                 }, true);
+                toggleButton.className = 'trend-data-toggle';
                 toggleButton.style.marginTop = '10px';
                 container.appendChild(toggleButton);
                 
                 trendOnlyGraph = graphContainer;
                 updateTrendOnlyGraph();
-                trendGraphVisible = true;
-                trendButton.style.backgroundColor = '#3cb371';
-            } else {
-                container.removeChild(trendOnlyGraph);
-                container.removeChild(trendOnlyGraph.nextSibling);
-                trendOnlyGraph = null;
-                trendGraphVisible = false;
-                trendButton.style.backgroundColor = '#4a4a4a';
+                separateTrendButton.style.backgroundColor = '#3cb371';
+                showTrendInMain = false;
             }
+            
             updateChart();
         });
-        
-        buttonsContainer.appendChild(zeroLineButton);
-        buttonsContainer.appendChild(trendButton);
-        controlRow.appendChild(buttonsContainer);
-        
-        // Clear existing content and add the new control row
-        elements.segmentControls.innerHTML = '';
-        elements.segmentControls.appendChild(controlRow);
-        
-        Object.assign(elements.excluded.style, {
-            padding: '10px',
-            backgroundColor: '#f5f5f5',
-            borderRadius: '4px',
-            display: 'none',
-            width: '100%',
-            textAlign: 'center'
-        });
-    }
+
+    //////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////END OF Create controls//////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////
+    
     // Add this new function for export button
     function createExportButton(chart, containerId) {
         const exportButton = Object.assign(document.createElement('button'), {
@@ -297,6 +306,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
             style: Object.entries(buttonStyle).map(([k, v]) => `${k}:${v}`).join(';')
         });
     }
+        
 
     function createTrendButton() {
         return Object.assign(document.createElement('button'), {
@@ -380,7 +390,11 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 marker: { enabled: true, radius: 4 },
                 connectNulls: false
             });
-            series.push(...trends);
+            
+            // Only add trend lines if showMainGraphTrend is true and not creating separate trend graph
+            if (showMainGraphTrend && showTrendInMain) {
+                series.push(...trends);
+            }
         } else {
             if (showDataPointsInTrend) {
                 series.push({
@@ -396,6 +410,28 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         }
         return series;
     }
+
+    // Expose createSeries to the global scope if needed
+    window.createSeries = createSeries;
+    
+    buttonsContainer.appendChild(zeroLineButton);
+    buttonsContainer.appendChild(trendButton);
+    buttonsContainer.appendChild(separateTrendButton);
+    controlRow.appendChild(buttonsContainer);
+    
+    // Clear existing content and add the new control row
+    elements.segmentControls.innerHTML = '';
+    elements.segmentControls.appendChild(controlRow);
+    
+    Object.assign(elements.excluded.style, {
+        padding: '10px',
+        backgroundColor: '#f5f5f5',
+        borderRadius: '4px',
+        display: 'none',
+        width: '100%',
+        textAlign: 'center'
+    });
+}
 
     function getChartConfig(data, trends, yMin, yMax, isTrendOnly = false) {
         return {
