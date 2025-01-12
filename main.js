@@ -83,17 +83,30 @@ function createTable(driver1, driver2) {
     driverHeader.textContent = `${driver1.name} vs ${driver2.name}`;
     div.appendChild(driverHeader);
     
+    // Create a wrapper div for better control of table and graph layout
+    const contentWrapper = document.createElement("div");
+    contentWrapper.className = "table-graph-wrapper";
+    contentWrapper.style.width = "100%";
+    contentWrapper.style.display = "flex";
+    contentWrapper.style.flexDirection = "column";
+    contentWrapper.style.alignItems = "center";
+    div.appendChild(contentWrapper);
+    
     const tableContainer = document.createElement("div");
+    tableContainer.className = "table-container";
     tableContainer.style.display = "flex";
     tableContainer.style.justifyContent = "center";
     tableContainer.style.marginBottom = "2em";
     tableContainer.style.width = "100%";
+    tableContainer.style.overflowX = "auto";
+    contentWrapper.appendChild(tableContainer);
     
     const table = document.createElement("table");
     table.style.borderCollapse = "collapse";
     table.style.width = "fit-content";
     table.style.marginBottom = "1em";
     table.style.backgroundColor = "#f5f5f5";
+    tableContainer.appendChild(table);
     
     const tr = document.createElement("tr");
     table.appendChild(tr);
@@ -118,18 +131,16 @@ function createTable(driver1, driver2) {
         th.style.whiteSpace = "nowrap";
         tr.appendChild(th);
     });
-
-    tableContainer.appendChild(table);
-    div.appendChild(tableContainer);
     
     return {
         table: table,
+        contentWrapper: contentWrapper,
         id: `${driver1.id}${driver2.id}`,
         sameRaceCount: 0,
         raceCount: 0,
         timeDifferences: [],
         percentageDifferences: [],
-        deltaPercentages: [], // Add this new array
+        deltaPercentages: [],
         driver1Better: 0,
     };
 }
@@ -315,11 +326,11 @@ function displayMedianResults(currentTable) {
         labelCell.textContent = data.label;
         tr.appendChild(labelCell);
         
-        // Value cell - Updated to center alignment
+        // Value cell
         const valueCell = document.createElement("td");
         valueCell.style.padding = "12px 6px";
         valueCell.style.fontWeight = "bold";
-        valueCell.style.textAlign = "center"; 
+        valueCell.style.textAlign = "center";
         valueCell.colSpan = 5;
         if (index === 0) valueCell.style.borderTop = "4px solid #ddd";
         
@@ -341,7 +352,7 @@ function displayMedianResults(currentTable) {
     labelCell.textContent = "Qualifying score";
     qualyScoreTr.appendChild(labelCell);
 
-    // Score cell - Updated to center alignment
+    // Score cell
     const scoreCell = document.createElement("td");
     scoreCell.style.padding = "12px 6px";
     scoreCell.style.textAlign = "center";
@@ -349,7 +360,6 @@ function displayMedianResults(currentTable) {
     scoreCell.style.fontWeight = "bold";
     scoreCell.colSpan = 5;
 
-    // Get driver names from the table headers
     const headers = currentTable.table.getElementsByTagName('th');
     const driver1Name = headers[2].textContent;
     const driver2Name = headers[3].textContent;
@@ -359,15 +369,12 @@ function displayMedianResults(currentTable) {
     
     const scoreText = `${driver1Name} ${driver1Score} - ${driver2Score} ${driver2Name}`;
     scoreCell.textContent = scoreText;
-
     qualyScoreTr.appendChild(scoreCell);
 
-    // Add the trend graph
+    // Create a dedicated container for the graph
     const graphContainer = document.createElement('div');
-    graphContainer.style.width = '100%';
-    graphContainer.style.maxWidth = '800px';
-    graphContainer.style.margin = '20px auto';
-    currentTable.table.parentNode.appendChild(graphContainer);
+    graphContainer.className = 'graph-container';
+    currentTable.contentWrapper.appendChild(graphContainer);
     
     // Create the trend graph with deltaPercentages
     QualifyingTrendGraph(
@@ -377,7 +384,6 @@ function displayMedianResults(currentTable) {
         driver2Name
     );
 }
-
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
