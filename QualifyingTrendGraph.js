@@ -36,7 +36,6 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
     //////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////// Create controls////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////////////////
-    
     function createControls() {
         // Create a single row for all controls
         const controlRow = document.createElement('div');
@@ -62,8 +61,9 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 background-color: white;
                 color: #333;
                 padding: 5px 10px;
-                width: 40px;
+                width: 80px;
                 border: 1px solid #ddd;
+                margin-left: 5px;
             `
         });
         
@@ -109,6 +109,9 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 background-color: white;
                 color: #333;
                 padding: 5px 10px;
+                width: 120px;
+                border: 1px solid #ddd;
+                margin: 0 10px;
             `
         });
         
@@ -147,6 +150,17 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                     onClick(button);
                 }
             });
+    
+            // Add active state
+            button.addEventListener('mousedown', () => {
+                button.style.transform = 'scale(0.98)';
+                button.style.backgroundColor = '#2a2a2a';
+            });
+    
+            button.addEventListener('mouseup', () => {
+                button.style.transform = 'scale(1)';
+                button.style.backgroundColor = button.classList.contains('active') ? '#3cb371' : '#4a4a4a';
+            });
             
             return button;
         };
@@ -156,39 +170,26 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         buttonsContainer.style.alignItems = 'center';
         buttonsContainer.style.gap = '10px';
         
+        // Zero Line button with immediate update
         const zeroLineButton = createButton('Zero Line', () => {
             isZeroLineRed = !isZeroLineRed;
             zeroLineButton.style.backgroundColor = isZeroLineRed ? '#8b0000' : '#4a4a4a';
-            
-            if (mainChart) {
-                const mainZeroLine = mainChart.yAxis[0].plotLinesAndBands[0];
-                mainZeroLine.svgElem.attr({
-                    stroke: isZeroLineRed ? '#ff3333' : '#CCCCCC'
-                });
-            }
-            
-            if (trendChart) {
-                const trendZeroLine = trendChart.yAxis[0].plotLinesAndBands[0];
-                trendZeroLine.svgElem.attr({
-                    stroke: isZeroLineRed ? '#ff3333' : '#CCCCCC'
-                });
-            }
+            updateCharts();  // Add immediate update
         });
     
-        // New Trend toggle button
+        // Trend toggle button
         let showMainGraphTrend = true;
         const trendButton = createButton('Trend', () => {
             showMainGraphTrend = !showMainGraphTrend;
             trendButton.style.backgroundColor = showMainGraphTrend ? '#3cb371' : '#4a4a4a';
-            updateChart();
+            updateCharts();
         });
         
+        // Separate trend graph button
         const separateTrendButton = createButton('Separate Trend Graph', () => {
-            // Check if trendOnlyGraph exists and is in the DOM
             const existingGraph = container.querySelector('.trend-only-graph');
             
             if (existingGraph) {
-                // Remove the existing graph and its toggle button
                 container.removeChild(existingGraph);
                 const toggleButton = container.querySelector('.trend-data-toggle');
                 if (toggleButton) {
@@ -198,7 +199,6 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 trendOnlyGraph = null;
                 showTrendInMain = true;
             } else {
-                // Create new graph
                 const graphContainer = Object.assign(document.createElement('div'), {
                     className: 'trend-only-graph',
                     style: 'width: 100%; height: 400px; margin-top: 20px'
@@ -219,9 +219,31 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 separateTrendButton.style.backgroundColor = '#3cb371';
                 showTrendInMain = false;
             }
-            
-            updateChart();
+            updateCharts();
         });
+        
+        buttonsContainer.appendChild(zeroLineButton);
+        buttonsContainer.appendChild(trendButton);
+        buttonsContainer.appendChild(separateTrendButton);
+        controlRow.appendChild(buttonsContainer);
+        
+        // Clear existing content and add the new control row
+        elements.segmentControls.innerHTML = '';
+        elements.segmentControls.appendChild(controlRow);
+        
+        // Update excluded points styling
+        Object.assign(elements.excluded.style, {
+            padding: '10px',
+            backgroundColor: '#f5f5f5',
+            borderRadius: '4px',
+            display: 'none',
+            width: '100%',
+            maxWidth: '100%',
+            boxSizing: 'border-box',
+            margin: '10px auto',
+            textAlign: 'center'
+        });
+    }
 
     //////////////////////////////////////////////////////////////////////////////////////
     //////////////////////////////////END OF Create controls//////////////////////////////
