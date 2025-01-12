@@ -34,42 +34,92 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
 
     // Create controls
     function createControls() {
+        // Create segment controls with dropdown
         elements.segmentControls.appendChild(Object.assign(document.createElement('span'), {
             textContent: 'Trend line segments: ',
             style: 'marginRight: 10px'
         }));
-
-        [1, 2, 3, 4].forEach(segments => {
-            const button = Object.assign(document.createElement('button'), {
-                textContent: segments,
-                onclick: () => {
-                    elements.segmentControls.querySelectorAll('button:not(.trend-only-btn):not(.zero-line-btn)')
-                        .forEach(b => b.style.backgroundColor = '#4a4a4a');
-                    button.style.backgroundColor = '#3cb371';
-                    currentSegments = segments;
-                    updateCharts();
-                },
-                style: Object.entries({...buttonStyle, padding: '5px 10px'})
-                    .map(([k, v]) => `${k}:${v}`).join(';')
-            });
-            if (segments === 1) button.style.backgroundColor = '#3cb371';
-            elements.segmentControls.appendChild(button);
+    
+        // Create segment dropdown
+        const segmentSelect = Object.assign(document.createElement('select'), {
+            className: 'selector',
+            onchange: (e) => {
+                currentSegments = parseInt(e.target.value);
+                updateCharts();
+            },
+            style: Object.entries({
+                ...buttonStyle,
+                backgroundColor: 'white',
+                color: '#333',
+                padding: '5px 10px'
+            }).map(([k, v]) => `${k}:${v}`).join(';')
         });
-
+    
+        [1, 2, 3, 4].forEach(segments => {
+            const option = document.createElement('option');
+            option.value = segments;
+            option.text = segments;
+            segmentSelect.appendChild(option);
+        });
+        elements.segmentControls.appendChild(segmentSelect);
+    
         elements.segmentControls.appendChild(createSeparator());
         elements.segmentControls.appendChild(createZeroLineButton());
         elements.segmentControls.appendChild(createSeparator());
         elements.segmentControls.appendChild(createTrendButton());
-
-        [1, 1.5, 2, 3, 5].forEach(threshold => {
-            const button = Object.assign(document.createElement('button'), {
-                textContent: `Filter >${threshold}%`,
-                onclick: () => toggleFilter(threshold, button),
-                style: Object.entries(buttonStyle).map(([k, v]) => `${k}:${v}`).join(';')
-            });
-            elements.filterButtons.appendChild(button);
+    
+        // Create filter dropdown
+        const filterSelect = Object.assign(document.createElement('select'), {
+            className: 'selector',
+            onchange: (e) => {
+                const threshold = parseFloat(e.target.value);
+                if (threshold === 0) {
+                    // Reset filter
+                    filteredData = [...data];
+                    excludedPoints = [];
+                    activeThreshold = null;
+                    elements.excluded.style.display = 'none';
+                } else {
+                    excludedPoints = [];
+                    filteredData = data.map((value, index) => {
+                        if (Math.abs(value) > threshold) {
+                            excludedPoints.push({ raceNumber: index + 1, value: Number(value.toFixed(3)) });
+                            return null;
+                        }
+                        return Number(value.toFixed(3));
+                    });
+                    activeThreshold = threshold;
+                    if (excludedPoints.length) {
+                        elements.excluded.style.display = 'block';
+                        elements.excluded.innerHTML = '<strong>Excluded Points:</strong><br>' +
+                            excludedPoints.map(p => `Race ${p.raceNumber}: ${p.value}%`).join('<br>');
+                    }
+                }
+                updateCharts();
+            },
+            style: Object.entries({
+                ...buttonStyle,
+                backgroundColor: 'white',
+                color: '#333',
+                padding: '5px 10px'
+            }).map(([k, v]) => `${k}:${v}`).join(';')
         });
-
+    
+        // Add default "No filter" option
+        const defaultOption = document.createElement('option');
+        defaultOption.value = "0";
+        defaultOption.text = "No Filter";
+        filterSelect.appendChild(defaultOption);
+    
+        // Add filter options
+        [1, 1.5, 2, 3, 5].forEach(threshold => {
+            const option = document.createElement('option');
+            option.value = threshold;
+            option.text = `Filter >${threshold}%`;
+            filterSelect.appendChild(option);
+        });
+        elements.filterButtons.appendChild(filterSelect);
+    
         Object.assign(elements.excluded.style, {
             padding: '10px',
             backgroundColor: '#f5f5f5',
@@ -77,7 +127,33 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
             display: 'none'
         });
     }
-
+    // Add this new function for export button
+    function createExportButton(chart, containerId) {
+        const exportButton = Object.assign(document.createElement('button'), {
+            textContent: 'Download High-Res Image',
+            onclick: () => {
+                chart.exportChart({
+                    type: 'image/png',
+                    filename: 'qualifying-comparison',
+                    scale: 4,
+                    width: 3000,
+                    sourceWidth: 3000,
+                    sourceHeight: 2000
+                });
+            },
+            style: Object.entries({
+                ...buttonStyle,
+                margin: '20px auto',
+                display: 'block'
+            }).map(([k, v]) => `${k}:${v}`).join(';')
+        });
+        
+        const buttonContainer = document.createElement('div');
+        buttonContainer.style.textAlign = 'center';
+        buttonContainer.appendChild(exportButton);
+        document.getElementById(containerId).appendChild(buttonContainer);
+    }
+    
     function createSeparator() {
         return Object.assign(document.createElement('span'), {
             textContent: ' | ',
@@ -234,17 +310,58 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
 
     function getChartConfig(data, trends, yMin, yMax, isTrendOnly = false) {
         return {
-            chart: { type: 'line', height: '400px' },
-            title: { text: isTrendOnly ? 'Trend Line' : 'Qualifying Gap Trend' },
+            chart: {
+                type: 'line',
+                height: '400px',
+                events: {
+                    load: function() {
+                        const containerId = `export-container-${Date.now()}`;
+                        const container = document.createElement('div');
+                        container.id = containerId;
+                        this.container.parentNode.appendChild(container);
+                        createExportButton(this, containerId);
+                    }
+                },
+                style: {
+                    fontFamily: "'Noto Sans SC', 'Source Han Sans SC', 'Microsoft YaHei', sans-serif"
+                }
+            },
+            title: { 
+                text: isTrendOnly ? 'Trend Line' : 'Qualifying Gap Trend',
+                style: {
+                    fontSize: '18px',
+                    fontWeight: 'bold'
+                }
+            },
             xAxis: {
-                title: { text: 'Race Number' },
-                allowDecimals: false
+                title: { 
+                    text: 'Race Number',
+                    style: {
+                        fontSize: '14px'
+                    }
+                },
+                allowDecimals: false,
+                labels: {
+                    style: {
+                        fontSize: '12px'
+                    }
+                }
             },
             yAxis: {
-                title: { text: 'Delta %' },
+                title: { 
+                    text: 'Delta %',
+                    style: {
+                        fontSize: '14px'
+                    }
+                },
                 min: yMin,
                 max: yMax,
-                labels: { format: '{value:.1f}%' },
+                labels: { 
+                    format: '{value:.1f}%',
+                    style: {
+                        fontSize: '12px'
+                    }
+                },
                 plotLines: [{
                     color: isZeroLineRed ? '#ff3333' : '#CCCCCC',
                     width: 1,
@@ -259,7 +376,11 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                         text: `${driver1LastName} is Faster`,
                         align: 'left',
                         x: 10,
-                        style: { color: '#666666' }
+                        style: { 
+                            color: '#666666',
+                            fontSize: '12px'
+                        },
+                        useHTML: true
                     }
                 }, {
                     from: yMin,
@@ -269,21 +390,90 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                         text: `${driver2LastName} is Faster`,
                         align: 'left',
                         x: 10,
-                        style: { color: '#666666' }
+                        style: { 
+                            color: '#666666',
+                            fontSize: '12px'
+                        },
+                        useHTML: true
                     }
                 }]
             },
             tooltip: {
                 formatter: function() {
                     return `Race ${this.x}<br/>${this.series.name}: ${Number(this.y).toFixed(3)}%`;
+                },
+                style: {
+                    fontSize: '12px'
                 }
             },
-            legend: { enabled: currentSegments > 1 || !isTrendOnly },
+            legend: { 
+                enabled: currentSegments > 1 || !isTrendOnly,
+                itemStyle: {
+                    fontSize: '12px'
+                }
+            },
             series: createSeries(data, trends, isTrendOnly),
             plotOptions: {
                 series: {
-                    states: { inactive: { opacity: 1 } }
+                    states: { 
+                        inactive: { opacity: 1 } 
+                    }
                 }
+            },
+            exporting: {
+                enabled: true,
+                fallbackToExportServer: false,
+                chartOptions: {
+                    chart: {
+                        width: 3000,
+                        height: 2000,
+                        style: {
+                            fontSize: '16px'  // Increase font size for exported image
+                        }
+                    },
+                    title: {
+                        style: {
+                            fontSize: '24px'  // Larger title in exported image
+                        }
+                    },
+                    xAxis: {
+                        labels: {
+                            style: {
+                                fontSize: '16px'
+                            }
+                        },
+                        title: {
+                            style: {
+                                fontSize: '18px'
+                            }
+                        }
+                    },
+                    yAxis: {
+                        labels: {
+                            style: {
+                                fontSize: '16px'
+                            }
+                        },
+                        title: {
+                            style: {
+                                fontSize: '18px'
+                            }
+                        }
+                    },
+                    legend: {
+                        itemStyle: {
+                            fontSize: '16px'
+                        }
+                    }
+                },
+                buttons: {
+                    contextButton: {
+                        enabled: false  // Disable the default export button
+                    }
+                }
+            },
+            credits: {
+                enabled: false  // Remove Highcharts credits
             }
         };
     }
