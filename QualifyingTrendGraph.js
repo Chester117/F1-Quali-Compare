@@ -9,6 +9,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
     let isZeroLineRed = false;
     let showTrendInMain = true;
     let showDataPointsInTrend = false;
+    let showMainGraphTrend = true;
 
     const driver1LastName = driver1Name.split(' ').pop();
     const driver2LastName = driver2Name.split(' ').pop();
@@ -118,6 +119,13 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         updateCharts(); // Immediately update charts
     });
 
+    // Trend button
+    const trendButton = createButton('Trend', () => {
+        showMainGraphTrend = !showMainGraphTrend;
+        trendButton.style.backgroundColor = showMainGraphTrend ? '#3cb371' : '#4a4a4a';
+        updateChart();
+    });
+
     // Separate Trend Graph button
     const separateTrendButton = createButton('Separate Trend Graph', () => {
         const existingGraph = container.querySelector('.trend-only-graph');
@@ -156,12 +164,25 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         updateChart();
     });
 
+    // Add all buttons to container
     buttonsContainer.appendChild(zeroLineButton);
+    buttonsContainer.appendChild(trendButton);  // Added back the trend button
     buttonsContainer.appendChild(separateTrendButton);
     controlRow.appendChild(buttonsContainer);
 
+    // Clear and add new controls
     elements.segmentControls.innerHTML = '';
     elements.segmentControls.appendChild(controlRow);
+    
+    // Setup excluded points section
+    Object.assign(elements.excluded.style, {
+        padding: '10px',
+        backgroundColor: '#f5f5f5',
+        borderRadius: '4px',
+        display: 'none',
+        width: '100%',
+        textAlign: 'center'
+    });
 }
     
     //////////////////////////////////////////////////////////////////////////////////////
