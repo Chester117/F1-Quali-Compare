@@ -714,8 +714,14 @@ async function showHistoryResults() {
 function bootstrapConfidenceInterval(data, confidence = 0.95, iterations = 10000) {
     if (data.length < 2) return { lower: NaN, upper: NaN };
     
-    // Function to calculate mean of an array
-    const calculateMean = arr => arr.reduce((a, b) => a + b, 0) / arr.length;
+    // Function to calculate median of an array
+    const calculateMedian = arr => {
+        const sorted = [...arr].sort((a, b) => a - b);
+        const mid = Math.floor(sorted.length / 2);
+        return sorted.length % 2 === 0 
+            ? (sorted[mid - 1] + sorted[mid]) / 2 
+            : sorted[mid];
+    };
     
     // Function to sample with replacement
     const sample = (arr) => {
@@ -726,22 +732,22 @@ function bootstrapConfidenceInterval(data, confidence = 0.95, iterations = 10000
         return result;
     };
     
-    // Generate bootstrap samples and calculate means
-    const bootstrapMeans = new Array(iterations);
+    // Generate bootstrap samples and calculate medians
+    const bootstrapMedians = new Array(iterations);
     for (let i = 0; i < iterations; i++) {
-        bootstrapMeans[i] = calculateMean(sample(data));
+        bootstrapMedians[i] = calculateMedian(sample(data));
     }
     
-    // Sort the means to find percentile-based confidence interval
-    bootstrapMeans.sort((a, b) => a - b);
+    // Sort the medians to find percentile-based confidence interval
+    bootstrapMedians.sort((a, b) => a - b);
     
     const alpha = 1 - confidence;
     const lowerIndex = Math.floor((alpha / 2) * iterations);
     const upperIndex = Math.floor((1 - alpha / 2) * iterations);
     
     return {
-        lower: bootstrapMeans[lowerIndex],
-        upper: bootstrapMeans[upperIndex]
+        lower: bootstrapMedians[lowerIndex],
+        upper: bootstrapMedians[upperIndex]
     };
 }
 
