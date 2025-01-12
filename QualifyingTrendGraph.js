@@ -516,16 +516,40 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
     }
 
     function prepareChartData() {
-        const fullData = data.map((value, index) => 
-            [index + 1, value !== null ? Number(value.toFixed(3)) : null]
-        );
+        // First, filter the data correctly
+        const filteredFullData = data.map((value, index) => {
+            if (activeThreshold && Math.abs(value) > activeThreshold) {
+                return [index + 1, null];
+            }
+            return [index + 1, value !== null ? Number(value.toFixed(3)) : null];
+        });
         
-        const trends = calculateTrendSegments(filteredData);
-        const validValues = data.filter(v => v !== null);
-        const yMin = Math.min(...validValues) - Math.abs(Math.min(...validValues) * 0.1);
-        const yMax = Math.max(...validValues) + Math.abs(Math.max(...validValues) * 0.1);
+        // Prepare data for trend calculation (only using non-null values)
+        const validFilteredData = filteredFullData
+            .filter(point => point[1] !== null)
+            .map((point, index) => [point[0], point[1]]);
         
-        return { fullData, trends, yMin, yMax };
+        const trends = calculateTrendSegments(validFilteredData);
+        
+        // Calculate min and max from non-null values
+        const validValues = filteredFullData
+            .filter(point => point[1] !== null)
+            .map(point => point[1]);
+        
+        const yMin = validValues.length > 0 
+            ? Math.min(...validValues) - Math.abs(Math.min(...validValues) * 0.1)
+            : -1; // Default if no valid values
+        
+        const yMax = validValues.length > 0 
+            ? Math.max(...validValues) + Math.abs(Math.max(...validValues) * 0.1)
+            : 1; // Default if no valid values
+        
+        return { 
+            fullData: filteredFullData, 
+            trends, 
+            yMin, 
+            yMax 
+        };
     }
 
     function updateChart() {
