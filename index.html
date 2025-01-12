@@ -1,4 +1,5 @@
 <head>
+    <meta charset="UTF-8">
     <script src="https://code.highcharts.com/highcharts.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/simple-statistics/7.8.3/simple-statistics.min.js"></script>
     <script src="main.js"></script>
@@ -8,9 +9,10 @@
 </head>
 <body>
     <div class="banner">
-        <div class="tab-button active" onclick="switchTab('qualifying')">Qualifying Comparison</div>
-        <div class="tab-button" onclick="switchTab('history')">Battle History</div>
+        <div class="tab-button active" data-tab="qualifying" onclick="switchTab('qualifying')">Qualifying Comparison</div>
+        <div class="tab-button" data-tab="history" onclick="switchTab('history')">Battle History</div>
     </div>
+    
     <div id="qualifying-content">
         <div class="flex-container">
             <h1 class="flex-title">F1队友排位赛对比计算1</h1>
@@ -22,6 +24,7 @@
         </div>
         <div class="flex-container-table" id="tables"></div>
     </div>
+    
     <div id="history-content" style="display: none;">
         <div class="flex-container">
             <h1 class="flex-title">F1队友历史对比</h1>
