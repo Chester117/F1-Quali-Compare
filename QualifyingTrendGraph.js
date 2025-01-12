@@ -34,17 +34,25 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
 
     // Create controls
     function createControls() {
-        // Create a container for all controls to align them
-        const controlContainer = document.createElement('div');
-        controlContainer.style.cssText = 'display: flex; justify-content: center; align-items: center; gap: 15px; flex-wrap: wrap;';
-        container.insertBefore(controlContainer, elements.segmentControls);
+        // Create segment controls with dropdown
+        elements.segmentControls.appendChild(Object.assign(document.createElement('span'), {
+            textContent: 'Trend line segments: ',
+            style: 'marginRight: 10px'
+        }));
     
-        // Segment controls with dropdown
-        const segmentLabel = document.createElement('label');
-        segmentLabel.textContent = 'Trend Segments:';
+        // Create segment dropdown
         const segmentSelect = Object.assign(document.createElement('select'), {
             className: 'selector',
-            style: 'min-width: 100px;'
+            onchange: (e) => {
+                currentSegments = parseInt(e.target.value);
+                updateCharts();
+            },
+            style: Object.entries({
+                ...buttonStyle,
+                backgroundColor: 'white',
+                color: '#333',
+                padding: '5px 10px'
+            }).map(([k, v]) => `${k}:${v}`).join(';')
         });
     
         [1, 2, 3, 4].forEach(segments => {
@@ -53,18 +61,48 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
             option.text = segments;
             segmentSelect.appendChild(option);
         });
-        segmentSelect.value = currentSegments;
-        segmentSelect.addEventListener('change', (e) => {
-            currentSegments = parseInt(e.target.value);
-            updateCharts();
-        });
+        elements.segmentControls.appendChild(segmentSelect);
     
-        // Outlier filter controls
-        const filterLabel = document.createElement('label');
-        filterLabel.textContent = 'Outlier Filter:';
+        elements.segmentControls.appendChild(createSeparator());
+        elements.segmentControls.appendChild(createZeroLineButton());
+        elements.segmentControls.appendChild(createSeparator());
+        elements.segmentControls.appendChild(createTrendButton());
+    
+        // Create filter dropdown
         const filterSelect = Object.assign(document.createElement('select'), {
             className: 'selector',
-            style: 'min-width: 120px;'
+            onchange: (e) => {
+                const threshold = parseFloat(e.target.value);
+                if (threshold === 0) {
+                    // Reset filter
+                    filteredData = [...data];
+                    excludedPoints = [];
+                    activeThreshold = null;
+                    elements.excluded.style.display = 'none';
+                } else {
+                    excludedPoints = [];
+                    filteredData = data.map((value, index) => {
+                        if (Math.abs(value) > threshold) {
+                            excludedPoints.push({ raceNumber: index + 1, value: Number(value.toFixed(3)) });
+                            return null;
+                        }
+                        return Number(value.toFixed(3));
+                    });
+                    activeThreshold = threshold;
+                    if (excludedPoints.length) {
+                        elements.excluded.style.display = 'block';
+                        elements.excluded.innerHTML = '<strong>Excluded Points:</strong><br>' +
+                            excludedPoints.map(p => `Race ${p.raceNumber}: ${p.value}%`).join('<br>');
+                    }
+                }
+                updateCharts();
+            },
+            style: Object.entries({
+                ...buttonStyle,
+                backgroundColor: 'white',
+                color: '#333',
+                padding: '5px 10px'
+            }).map(([k, v]) => `${k}:${v}`).join(';')
         });
     
         // Add default "No filter" option
@@ -77,52 +115,10 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         [1, 1.5, 2, 3, 5].forEach(threshold => {
             const option = document.createElement('option');
             option.value = threshold;
-            option.text = `>${threshold}%`;
+            option.text = `Filter >${threshold}%`;
             filterSelect.appendChild(option);
         });
-        
-        filterSelect.addEventListener('change', (e) => {
-            const threshold = parseFloat(e.target.value);
-            if (threshold === 0) {
-                // Reset filter
-                filteredData = [...data];
-                excludedPoints = [];
-                activeThreshold = null;
-                elements.excluded.style.display = 'none';
-            } else {
-                excludedPoints = [];
-                filteredData = data.filter((value, index) => {
-                    if (Math.abs(value) > threshold) {
-                        excludedPoints.push({ raceNumber: index + 1, value: Number(value.toFixed(3)) });
-                        return false;
-                    }
-                    return true;
-                });
-                activeThreshold = threshold;
-                if (excludedPoints.length) {
-                    elements.excluded.style.display = 'block';
-                    elements.excluded.innerHTML = '<strong>Excluded Points:</strong><br>' +
-                        excludedPoints.map(p => `Race ${p.raceNumber}: ${p.value}%`).join('<br>');
-                }
-            }
-            updateCharts();
-        });
-    
-        // Zero Line and Trend buttons
-        const zeroLineButton = createZeroLineButton();
-        const trendButton = createTrendButton();
-    
-        // Add elements to control container
-        controlContainer.appendChild(segmentLabel);
-        controlContainer.appendChild(segmentSelect);
-        controlContainer.appendChild(filterLabel);
-        controlContainer.appendChild(filterSelect);
-        controlContainer.appendChild(zeroLineButton);
-        controlContainer.appendChild(trendButton);
-    
-        // Remove previous segment and filter controls
-        elements.segmentControls.innerHTML = '';
-        elements.filterButtons.innerHTML = '';
+        elements.filterButtons.appendChild(filterSelect);
     
         Object.assign(elements.excluded.style, {
             padding: '10px',
@@ -131,8 +127,6 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
             display: 'none'
         });
     }
-
-    
     // Add this new function for export button
     function createExportButton(chart, containerId) {
         const exportButton = Object.assign(document.createElement('button'), {
@@ -485,13 +479,12 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
     }
 
     function calculateTrendSegments(data) {
-        // Ensure we filter out null values before calculating trend
         const points = data.map((value, index) => 
             value !== null ? [index + 1, value] : null
         ).filter(point => point !== null);
-    
+
         if (points.length < 2) return [];
-    
+
         const segmentLength = Math.floor(points.length / currentSegments);
         return Array.from({ length: currentSegments }, (_, i) => {
             const start = i * segmentLength;
@@ -523,26 +516,21 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
     }
 
     function prepareChartData() {
-        // Use filteredData instead of the original data
-        const fullData = filteredData.map((value, index) => 
+        const fullData = data.map((value, index) => 
             [index + 1, value !== null ? Number(value.toFixed(3)) : null]
         );
         
-        // Calculate trends based on filtered data
         const trends = calculateTrendSegments(filteredData);
-        
-        // Use only non-null values from filtered data for y-axis scaling
-        const validValues = filteredData.filter(v => v !== null);
-        
-        // Ensure we have a valid range even if all points are filtered out
-        const yMin = validValues.length > 0 
-            ? Math.min(...validValues) - Math.abs(Math.min(...validValues) * 0.1)
-            : -5;
-        const yMax = validValues.length > 0 
-            ? Math.max(...validValues) + Math.abs(Math.max(...validValues) * 0.1)
-            : 5;
+        const validValues = data.filter(v => v !== null);
+        const yMin = Math.min(...validValues) - Math.abs(Math.min(...validValues) * 0.1);
+        const yMax = Math.max(...validValues) + Math.abs(Math.max(...validValues) * 0.1);
         
         return { fullData, trends, yMin, yMax };
+    }
+
+    function updateChart() {
+        const { fullData, trends, yMin, yMax } = prepareChartData();
+        mainChart = Highcharts.chart(graphContainer, getChartConfig(fullData, trends, yMin, yMax));
     }
 
     function updateTrendOnlyGraph() {
@@ -556,7 +544,6 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         updateChart();
         if (trendOnlyGraph) updateTrendOnlyGraph();
     }
-
 
     const graphContainer = Object.assign(document.createElement('div'), {
         style: 'width: 100%; height: 400px'
