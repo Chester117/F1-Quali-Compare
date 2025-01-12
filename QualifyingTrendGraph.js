@@ -1,7 +1,7 @@
 function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
     // State management
     const state = {
-        filteredData: [],            // Start empty as we'll filter in init
+        filteredData: [...data],     // Start with full data
         excludedPoints: [],
         currentSegments: 3,
         activeThreshold: 2,          // Set default filter to 2%
@@ -440,34 +440,44 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
 
     createControls();
 
-    // Initialize UI elements to match state
-    const filterSelect = container.querySelector('select:nth-child(2)');
-    filterSelect.value = '2';  // Set filter dropdown to 2%
-    
-    const segmentSelect = container.querySelector('select:nth-child(1)');
-    segmentSelect.value = '3';  // Set segments to 3
-    
-    // Apply initial filter
-    handleFilterChange(2);
-    
-    // Update initial chart
-    updateCharts();
-    
-    // Create separate trend graph
-    const separateTrendButton = container.querySelector('button');
-    if (separateTrendButton) {
-        separateTrendButton.click();
-    }
+    // Set initial state of controls
+    setTimeout(() => {
+        // Set segments to 3
+        const segmentSelect = container.querySelector('select');
+        if (segmentSelect) {
+            segmentSelect.value = '3';
+        }
 
-    // Enable zero line (red)
-    const zeroLineButton = container.querySelector('button:nth-child(3)');
-    if (zeroLineButton) {
-        zeroLineButton.click();
-    }
-    
-    // Ensure trend is shown
-    const trendButton = container.querySelector('button:nth-child(4)');
-    if (trendButton) {
-        trendButton.style.backgroundColor = '#3cb371';
-    }
+        // Set filter to 2%
+        const filterSelect = container.querySelectorAll('select')[1];
+        if (filterSelect) {
+            filterSelect.value = '2';
+        }
+
+        // Apply initial filter
+        handleFilterChange(2);
+
+        // Show separate trend graph
+        const separateTrendButton = container.querySelector('button:nth-child(5)');
+        if (separateTrendButton) {
+            separateTrendButton.click();
+        }
+
+        // Enable zero line
+        const zeroLineButton = container.querySelector('button:nth-child(3)');
+        if (zeroLineButton) {
+            zeroLineButton.click();
+        }
+
+        // Ensure trend button is active
+        const trendButton = container.querySelector('button:nth-child(4)');
+        if (trendButton) {
+            trendButton.style.backgroundColor = '#3cb371';
+        }
+
+        updateCharts();
+    }, 0);
+
+    // Initial chart update
+    updateCharts();
 }
