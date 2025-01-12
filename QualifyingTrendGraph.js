@@ -34,25 +34,17 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
 
     // Create controls
     function createControls() {
-        // Create segment controls with dropdown
-        elements.segmentControls.appendChild(Object.assign(document.createElement('span'), {
-            textContent: 'Trend line segments: ',
-            style: 'marginRight: 10px'
-        }));
+        // Create a container for all controls to align them
+        const controlContainer = document.createElement('div');
+        controlContainer.style.cssText = 'display: flex; justify-content: center; align-items: center; gap: 15px; flex-wrap: wrap;';
+        container.insertBefore(controlContainer, elements.segmentControls);
     
-        // Create segment dropdown
+        // Segment controls with dropdown
+        const segmentLabel = document.createElement('label');
+        segmentLabel.textContent = 'Trend Segments:';
         const segmentSelect = Object.assign(document.createElement('select'), {
             className: 'selector',
-            onchange: (e) => {
-                currentSegments = parseInt(e.target.value);
-                updateCharts();
-            },
-            style: Object.entries({
-                ...buttonStyle,
-                backgroundColor: 'white',
-                color: '#333',
-                padding: '5px 10px'
-            }).map(([k, v]) => `${k}:${v}`).join(';')
+            style: 'min-width: 100px;'
         });
     
         [1, 2, 3, 4].forEach(segments => {
@@ -61,48 +53,18 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
             option.text = segments;
             segmentSelect.appendChild(option);
         });
-        elements.segmentControls.appendChild(segmentSelect);
+        segmentSelect.value = currentSegments;
+        segmentSelect.addEventListener('change', (e) => {
+            currentSegments = parseInt(e.target.value);
+            updateCharts();
+        });
     
-        elements.segmentControls.appendChild(createSeparator());
-        elements.segmentControls.appendChild(createZeroLineButton());
-        elements.segmentControls.appendChild(createSeparator());
-        elements.segmentControls.appendChild(createTrendButton());
-    
-        // Create filter dropdown
+        // Outlier filter controls
+        const filterLabel = document.createElement('label');
+        filterLabel.textContent = 'Outlier Filter:';
         const filterSelect = Object.assign(document.createElement('select'), {
             className: 'selector',
-            onchange: (e) => {
-                const threshold = parseFloat(e.target.value);
-                if (threshold === 0) {
-                    // Reset filter
-                    filteredData = [...data];
-                    excludedPoints = [];
-                    activeThreshold = null;
-                    elements.excluded.style.display = 'none';
-                } else {
-                    excludedPoints = [];
-                    filteredData = data.map((value, index) => {
-                        if (Math.abs(value) > threshold) {
-                            excludedPoints.push({ raceNumber: index + 1, value: Number(value.toFixed(3)) });
-                            return null;
-                        }
-                        return Number(value.toFixed(3));
-                    });
-                    activeThreshold = threshold;
-                    if (excludedPoints.length) {
-                        elements.excluded.style.display = 'block';
-                        elements.excluded.innerHTML = '<strong>Excluded Points:</strong><br>' +
-                            excludedPoints.map(p => `Race ${p.raceNumber}: ${p.value}%`).join('<br>');
-                    }
-                }
-                updateCharts();
-            },
-            style: Object.entries({
-                ...buttonStyle,
-                backgroundColor: 'white',
-                color: '#333',
-                padding: '5px 10px'
-            }).map(([k, v]) => `${k}:${v}`).join(';')
+            style: 'min-width: 120px;'
         });
     
         // Add default "No filter" option
@@ -115,10 +77,52 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         [1, 1.5, 2, 3, 5].forEach(threshold => {
             const option = document.createElement('option');
             option.value = threshold;
-            option.text = `Filter >${threshold}%`;
+            option.text = `>${threshold}%`;
             filterSelect.appendChild(option);
         });
-        elements.filterButtons.appendChild(filterSelect);
+        
+        filterSelect.addEventListener('change', (e) => {
+            const threshold = parseFloat(e.target.value);
+            if (threshold === 0) {
+                // Reset filter
+                filteredData = [...data];
+                excludedPoints = [];
+                activeThreshold = null;
+                elements.excluded.style.display = 'none';
+            } else {
+                excludedPoints = [];
+                filteredData = data.filter((value, index) => {
+                    if (Math.abs(value) > threshold) {
+                        excludedPoints.push({ raceNumber: index + 1, value: Number(value.toFixed(3)) });
+                        return false;
+                    }
+                    return true;
+                });
+                activeThreshold = threshold;
+                if (excludedPoints.length) {
+                    elements.excluded.style.display = 'block';
+                    elements.excluded.innerHTML = '<strong>Excluded Points:</strong><br>' +
+                        excludedPoints.map(p => `Race ${p.raceNumber}: ${p.value}%`).join('<br>');
+                }
+            }
+            updateCharts();
+        });
+    
+        // Zero Line and Trend buttons
+        const zeroLineButton = createZeroLineButton();
+        const trendButton = createTrendButton();
+    
+        // Add elements to control container
+        controlContainer.appendChild(segmentLabel);
+        controlContainer.appendChild(segmentSelect);
+        controlContainer.appendChild(filterLabel);
+        controlContainer.appendChild(filterSelect);
+        controlContainer.appendChild(zeroLineButton);
+        controlContainer.appendChild(trendButton);
+    
+        // Remove previous segment and filter controls
+        elements.segmentControls.innerHTML = '';
+        elements.filterButtons.innerHTML = '';
     
         Object.assign(elements.excluded.style, {
             padding: '10px',
@@ -127,6 +131,8 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
             display: 'none'
         });
     }
+
+    
     // Add this new function for export button
     function createExportButton(chart, containerId) {
         const exportButton = Object.assign(document.createElement('button'), {
