@@ -209,7 +209,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 min: yMin,
                 max: yMax,
                 labels: {
-                    format: '{value:.3f}%'
+                    format: '{value:.1f}%'  // Changed to 1 decimal point
                 },
                 plotLines: [{
                     color: '#CCCCCC',
@@ -218,27 +218,27 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                     zIndex: 2
                 }],
                 plotBands: [{
-                    from: yMin,
-                    to: 0,
+                    from: 0,                   // Changed from yMin to 0
+                    to: yMax,
                     color: 'rgba(0, 0, 0, 0.03)',
                     label: {
-                        text: `${driver1Name} faster`,
+                        text: `${driver1Name} faster`,  // Swapped driver names
                         align: 'right',
-                        y: -5,
-                        x: -10,
+                        y: 5,
+                        x: -30,                // Increased distance from axis
                         style: {
                             color: '#666666'
                         }
                     }
                 }, {
-                    from: 0,
-                    to: yMax,
+                    from: yMin,
+                    to: 0,                     // Changed from yMax to 0
                     color: 'rgba(0, 0, 0, 0.03)',
                     label: {
-                        text: `${driver2Name} faster`,
+                        text: `${driver2Name} faster`,  // Swapped driver names
                         align: 'right',
-                        y: 5,
-                        x: -10,
+                        y: -5,
+                        x: -30,                // Increased distance from axis
                         style: {
                             color: '#666666'
                         }
