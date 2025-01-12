@@ -144,27 +144,27 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 if (Math.abs(value) > threshold) {
                     excludedPoints.push({
                         raceNumber: index + 1,
-                        value: value
+                        value: Number(parseFloat(value).toFixed(3))
                     });
                     return null;
                 }
-                return value;
+                return Number(parseFloat(value).toFixed(3));
             }).filter(value => value !== null);
             isFiltered = true;
             activeThreshold = threshold;
-
+    
             // Reset all filter buttons to default color
             filterButtonsContainer.querySelectorAll('button').forEach(btn => {
                 btn.style.backgroundColor = '#4a4a4a';
             });
             // Set active button color
             button.style.backgroundColor = '#3cb371';
-
+    
             if (excludedPoints.length > 0) {
                 excludedContainer.style.display = 'block';
                 excludedContainer.innerHTML = '<strong>Excluded Points:</strong><br>' +
                     excludedPoints.map(point => 
-                        `Race ${point.raceNumber}: ${point.value.toFixed(3)}%`
+                        `Race ${point.raceNumber}: ${point.value}%`
                     ).join('<br>');
             }
         }
@@ -211,16 +211,16 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         const maxDiff = Math.max(...filteredData);
         const minDiff = Math.min(...filteredData);
         const padding = (maxDiff - minDiff) * 0.1;
-
+    
         const trendSeries = trends.map((segment, index) => ({
             name: `Trend ${currentSegments > 1 ? (index + 1) : ''}`,
             data: Array.from({ length: segment.end - segment.start + 1 }, (_, i) => {
                 const x = segment.start + i;
-                return [x, segment.trend.m * x + segment.trend.b];
+                return [x, Number((segment.trend.m * x + segment.trend.b).toFixed(3))];
             }),
             color: '#82ca9d'
         }));
-
+    
         Highcharts.chart(trendOnlyGraph, {
             chart: {
                 type: 'line',
@@ -242,14 +242,17 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 min: minDiff - padding,
                 max: maxDiff + padding,
                 labels: {
-                    format: '{value}%'
+                    format: '{value:.3f}%'
                 }
             },
             tooltip: {
                 formatter: function() {
-                    return `Race ${this.x}<br/>
-                            ${this.series.name}: ${this.y.toFixed(3)}%`;
-                }
+                    const value = parseFloat(this.y).toFixed(3);
+                    const text = `Race ${this.x}<br/>
+                            ${this.series.name}: ${value}%`;
+                    return text;
+                },
+                useHTML: true
             },
             legend: {
                 enabled: currentSegments > 1
@@ -305,14 +308,17 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 min: yMin,
                 max: yMax,
                 labels: {
-                    format: '{value}%'
+                    format: '{value:.3f}%'
                 }
             },
             tooltip: {
                 formatter: function() {
-                    return `Race ${this.x}<br/>
-                            ${this.series.name}: ${this.y.toFixed(3)}%`;
-                }
+                    const value = parseFloat(this.y).toFixed(3);
+                    const text = `Race ${this.x}<br/>
+                            ${this.series.name}: ${value}%`;
+                    return text;
+                },
+                useHTML: true
             },
             legend: {
                 enabled: true
@@ -320,14 +326,17 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
             series: [
                 {
                     name: 'Qualifying Gap',
-                    data: chartData.map(point => [point.x, point.y]),
+                    data: chartData.map(point => [point.x, Number(point.y.toFixed(3))]),
                     color: '#00008B',
                     marker: {
                         enabled: true,
                         radius: 4
                     }
                 },
-                ...trendSeries
+                ...trendSeries.map(series => ({
+                    ...series,
+                    data: series.data.map(point => [point[0], Number(point[1].toFixed(3))])
+                }))
             ]
         });
     }
