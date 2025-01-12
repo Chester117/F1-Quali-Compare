@@ -287,6 +287,11 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
     }
 
     function createChart(chartData, trendSeries, yMin, yMax) {
+    // Get driver names from existing table headers
+        const headers = document.querySelectorAll('th');
+        const driver1Name = headers[2].textContent;
+        const driver2Name = headers[3].textContent;
+    
         Highcharts.chart(graphContainer, {
             chart: {
                 type: 'line',
@@ -299,7 +304,8 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 title: {
                     text: 'Race Number'
                 },
-                allowDecimals: false
+                allowDecimals: false,
+                gridLineWidth: 1
             },
             yAxis: {
                 title: {
@@ -309,35 +315,48 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 max: yMax,
                 labels: {
                     format: '{value:.3f}%'
-                }
-            },
-            tooltip: {
-                formatter: function() {
-                    const value = parseFloat(this.y).toFixed(3);
-                    const text = `Race ${this.x}<br/>
-                            ${this.series.name}: ${value}%`;
-                    return text;
                 },
-                useHTML: true
-            },
-            legend: {
-                enabled: true
-            },
-            series: [
-                {
-                    name: 'Qualifying Gap',
-                    data: chartData.map(point => [point.x, Number(point.y.toFixed(3))]),
-                    color: '#00008B',
-                    marker: {
-                        enabled: true,
-                        radius: 4
+                plotLines: [{
+                    color: '#CCCCCC',
+                    width: 2,
+                    value: 0,
+                    zIndex: 2
+                }],
+                // Add labels for which driver is faster
+                labels: {
+                    formatter: function() {
+                        return this.value.toFixed(3) + '%';
                     }
                 },
-                ...trendSeries.map(series => ({
-                    ...series,
-                    data: series.data.map(point => [point[0], Number(point[1].toFixed(3))])
-                }))
-            ]
+                plotBands: [{
+                    from: yMin,
+                    to: 0,
+                    color: 'rgba(0, 0, 0, 0.03)',
+                    label: {
+                        text: `${driver1Name} faster`,
+                        align: 'right',
+                        y: -5,
+                        x: -10,
+                        style: {
+                            color: '#666666'
+                        }
+                    }
+                }, {
+                    from: 0,
+                    to: yMax,
+                    color: 'rgba(0, 0, 0, 0.03)',
+                    label: {
+                        text: `${driver2Name} faster`,
+                        align: 'right',
+                        y: 5,
+                        x: -10,
+                        style: {
+                            color: '#666666'
+                        }
+                    }
+                }]
+            },
+            // Rest of the config remains the same
         });
     }
 
