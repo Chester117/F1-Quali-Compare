@@ -592,37 +592,55 @@ async function showHistoryResults() {
         const data = await getQualifying(year, constructorId);
         if (!data?.MRData.RaceTable.Races.length) continue;
 
-        let totalGaps = [];
+        let timeGaps = [];
         let driver1Wins = 0;
         let totalRaces = 0;
         
-        // Get first race with two drivers to get names
         const firstRace = data.MRData.RaceTable.Races.find(r => r.QualifyingResults.length === 2);
         if (!firstRace) continue;
 
         const driver1 = `${firstRace.QualifyingResults[0].Driver.givenName} ${firstRace.QualifyingResults[0].Driver.familyName}`;
         const driver2 = `${firstRace.QualifyingResults[1].Driver.givenName} ${firstRace.QualifyingResults[1].Driver.familyName}`;
 
-        // Calculate gaps for each race
         data.MRData.RaceTable.Races.forEach(race => {
             if (race.QualifyingResults.length !== 2) return;
-            const [d1, d2] = race.QualifyingResults;
-            
-            // Find best comparable time
-            let t1, t2;
-            if (d1.Q3 && d2.Q3) { t1 = d1.Q3; t2 = d2.Q3; }
-            else if (d1.Q2 && d2.Q2) { t1 = d1.Q2; t2 = d2.Q2; }
-            else if (d1.Q1 && d2.Q1) { t1 = d1.Q1; t2 = d2.Q1; }
-            else return;
 
-            const gap = (convertTimeString(t2) - convertTimeString(t1)) / convertTimeString(t1) * 100;
-            totalGaps.push(gap);
-            if (gap > 0) driver1Wins++;
-            totalRaces++;
+            const d1Times = {
+                Q1: race.QualifyingResults[0].Q1 || null,
+                Q2: race.QualifyingResults[0].Q2 || null,
+                Q3: race.QualifyingResults[0].Q3 || null
+            };
+            const d2Times = {
+                Q1: race.QualifyingResults[1].Q1 || null,
+                Q2: race.QualifyingResults[1].Q2 || null,
+                Q3: race.QualifyingResults[1].Q3 || null
+            };
+
+            let sessionTime = null;
+            if (d1Times.Q3 && d2Times.Q3) {
+                sessionTime = { t1: d1Times.Q3, t2: d2Times.Q3 };
+            } else if (d1Times.Q2 && d2Times.Q2) {
+                sessionTime = { t1: d1Times.Q2, t2: d2Times.Q2 };
+            } else if (d1Times.Q1 && d2Times.Q1) {
+                sessionTime = { t1: d1Times.Q1, t2: d2Times.Q1 };
+            }
+
+            if (sessionTime) {
+                const t1Ms = convertTimeString(sessionTime.t1);
+                const t2Ms = convertTimeString(sessionTime.t2);
+                const timeDiff = t2Ms - t1Ms;
+                const percentageDiff = (timeDiff / t1Ms) * 100;
+                
+                timeGaps.push(percentageDiff);
+                if (timeDiff < 0) driver1Wins++;  // Changed condition to match original logic
+                totalRaces++;
+            }
         });
 
         if (totalRaces > 0) {
-            const medianGap = calculateMedian(totalGaps);
+            // Calculate median using the same function as in qualifying comparison
+            const medianGap = calculateMedian(timeGaps);
+            
             tableRows.push(`
                 <tr>
                     <td>${year}</td>
