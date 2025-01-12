@@ -7,6 +7,10 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
     let trendOnlyGraph = null;
     let isZeroLineRed = false;
 
+    // Get last names for labels
+    const driver1LastName = driver1Name.split(' ').pop();
+    const driver2LastName = driver2Name.split(' ').pop();
+
     // Create containers
     const elements = ['filterButtons', 'segmentControls', 'excluded'].reduce((acc, id) => {
         acc[id] = document.createElement('div');
@@ -24,7 +28,8 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         color: 'white',
         border: 'none',
         borderRadius: '4px',
-        cursor: 'pointer'
+        cursor: 'pointer',
+        transition: 'background-color 0.3s'
     };
 
     // Create segment controls
@@ -38,9 +43,9 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         const button = Object.assign(document.createElement('button'), {
             textContent: segments,
             onclick: () => {
-                elements.segmentControls.querySelectorAll('button').forEach(b => 
+                elements.segmentControls.querySelectorAll('button:not(.trend-only-btn)').forEach(b => 
                     b.style.backgroundColor = '#4a4a4a');
-                button.style.backgroundColor = '#666666';
+                button.style.backgroundColor = '#3cb371';
                 currentSegments = segments;
                 updateChart();
                 if (trendOnlyGraph) updateTrendOnlyGraph();
@@ -48,10 +53,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
             style: Object.entries({...buttonStyle, padding: '5px 10px'})
                 .map(([k, v]) => `${k}:${v}`).join(';')
         });
-        button.addEventListener('mouseover', () => button.style.backgroundColor = '#666666');
-        button.addEventListener('mouseout', () => {
-            if (currentSegments !== segments) button.style.backgroundColor = '#4a4a4a';
-        });
+        if (segments === 1) button.style.backgroundColor = '#3cb371';
         elements.segmentControls.appendChild(button);
     });
 
@@ -60,10 +62,13 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         textContent: ' | ',
         style: 'margin: 0 10px'
     }));
-    elements.segmentControls.appendChild(Object.assign(document.createElement('button'), {
-        textContent: 'Show Separate Trendline',
+
+    const trendOnlyButton = Object.assign(document.createElement('button'), {
+        textContent: 'Show Trend Only',
+        className: 'trend-only-btn',
         onclick: () => {
             if (!trendOnlyGraph) {
+                trendOnlyButton.style.backgroundColor = '#3cb371';
                 trendOnlyGraph = document.createElement('div');
                 Object.assign(trendOnlyGraph.style, {
                     width: '100%',
@@ -73,12 +78,14 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 container.appendChild(trendOnlyGraph);
                 updateTrendOnlyGraph();
             } else {
+                trendOnlyButton.style.backgroundColor = '#4a4a4a';
                 trendOnlyGraph.remove();
                 trendOnlyGraph = null;
             }
         },
         style: Object.entries(buttonStyle).map(([k, v]) => `${k}:${v}`).join(';')
-    }));
+    });
+    elements.segmentControls.appendChild(trendOnlyButton);
 
     // Create filter buttons
     [1, 1.5, 2, 3, 5].forEach(threshold => {
@@ -87,25 +94,23 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
             onclick: () => toggleFilter(threshold, button),
             style: Object.entries(buttonStyle).map(([k, v]) => `${k}:${v}`).join(';')
         });
-        button.addEventListener('mouseover', () => 
-            button.style.backgroundColor = activeThreshold === threshold ? '#2d862d' : '#666666');
-        button.addEventListener('mouseout', () => 
-            button.style.backgroundColor = activeThreshold === threshold ? '#3cb371' : '#4a4a4a');
         elements.filterButtons.appendChild(button);
     });
 
     // Add zero line toggle
-    elements.filterButtons.appendChild(Object.assign(document.createElement('button'), {
-        textContent: 'Toggle Zero Line Color',
+    const zeroLineButton = Object.assign(document.createElement('button'), {
+        textContent: 'Zero Line',
         onclick: () => {
             isZeroLineRed = !isZeroLineRed;
+            zeroLineButton.style.backgroundColor = isZeroLineRed ? '#3cb371' : '#4a4a4a';
             updateChart();
             if (trendOnlyGraph) updateTrendOnlyGraph();
         },
         style: Object.entries(buttonStyle).map(([k, v]) => `${k}:${v}`).join(';')
-    }));
+    });
+    elements.filterButtons.appendChild(zeroLineButton);
 
-    // Setup containers
+    // Setup excluded points container
     Object.assign(elements.excluded.style, {
         padding: '10px',
         backgroundColor: '#f5f5f5',
@@ -113,6 +118,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         display: 'none'
     });
 
+    // Setup main graph container
     const graphContainer = Object.assign(document.createElement('div'), {
         style: 'width: 100%; height: 400px'
     });
@@ -174,20 +180,22 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                     to: yMax,
                     color: 'rgba(0, 0, 0, 0)',
                     label: {
-                        text: `${driver1Name} faster`,
+                        text: `${driver1LastName} is Faster`,
                         align: 'right',
-                        x: 60,
-                        style: { color: '#666666' }
+                        x: 100,
+                        style: { color: '#666666' },
+                        useHTML: true
                     }
                 }, {
                     from: yMin,
                     to: 0,
                     color: 'rgba(0, 0, 0, 0)',
                     label: {
-                        text: `${driver2Name} faster`,
+                        text: `${driver2LastName} is Faster`,
                         align: 'right',
-                        x: 60,
-                        style: { color: '#666666' }
+                        x: 100,
+                        style: { color: '#666666' },
+                        useHTML: true
                     }
                 }]
             },
