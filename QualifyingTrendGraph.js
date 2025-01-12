@@ -62,7 +62,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 background-color: white;
                 color: #333;
                 padding: 5px 10px;
-                width: 40px;
+                width: 70px;
                 border: 1px solid #ddd;
             `
         });
@@ -109,6 +109,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 background-color: white;
                 color: #333;
                 padding: 5px 10px;
+                width: 150px;
             `
         });
         
@@ -160,31 +161,35 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
             isZeroLineRed = !isZeroLineRed;
             zeroLineButton.style.backgroundColor = isZeroLineRed ? '#8b0000' : '#4a4a4a';
             
+            // Update zero line color without redrawing
             if (mainChart) {
-                const mainZeroLine = mainChart.yAxis[0].plotLinesAndBands[0];
-                mainZeroLine.svgElem.attr({
-                    stroke: isZeroLineRed ? '#ff3333' : '#CCCCCC'
+                const plotLines = mainChart.yAxis[0].plotLinesAndBands;
+                plotLines.forEach(line => {
+                    if (line.options.value === 0 && line.svgElem) {
+                        line.svgElem.attr('stroke', isZeroLineRed ? '#ff3333' : '#CCCCCC');
+                    }
                 });
             }
             
             if (trendChart) {
-                const trendZeroLine = trendChart.yAxis[0].plotLinesAndBands[0];
-                trendZeroLine.svgElem.attr({
-                    stroke: isZeroLineRed ? '#ff3333' : '#CCCCCC'
+                const plotLines = trendChart.yAxis[0].plotLinesAndBands;
+                plotLines.forEach(line => {
+                    if (line.options.value === 0 && line.svgElem) {
+                        line.svgElem.attr('stroke', isZeroLineRed ? '#ff3333' : '#CCCCCC');
+                    }
                 });
             }
         });
     
-        // New Trend toggle button
         let showMainGraphTrend = true;
         const trendButton = createButton('Trend', () => {
             showMainGraphTrend = !showMainGraphTrend;
             trendButton.style.backgroundColor = showMainGraphTrend ? '#3cb371' : '#4a4a4a';
             updateChart();
         });
-        
+    
+        let showDataPointsInTrend = false;
         const separateTrendButton = createButton('Separate Trend Graph', () => {
-            // Check if trendOnlyGraph exists and is in the DOM
             const existingGraph = container.querySelector('.trend-only-graph');
             
             if (existingGraph) {
@@ -197,6 +202,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 separateTrendButton.style.backgroundColor = '#4a4a4a';
                 trendOnlyGraph = null;
                 showTrendInMain = true;
+                showDataPointsInTrend = false;
             } else {
                 // Create new graph
                 const graphContainer = Object.assign(document.createElement('div'), {
@@ -208,7 +214,16 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 const toggleButton = createButton('Show Data Points', () => {
                     showDataPointsInTrend = !showDataPointsInTrend;
                     toggleButton.style.backgroundColor = showDataPointsInTrend ? '#3cb371' : '#4a4a4a';
-                    updateTrendOnlyGraph();
+                    
+                    // Update data points visibility without full redraw
+                    if (trendChart) {
+                        const series = trendChart.series;
+                        const dataPointsSeries = series.find(s => s.name === 'Data Points');
+                        
+                        if (dataPointsSeries) {
+                            dataPointsSeries.setVisible(showDataPointsInTrend);
+                        }
+                    }
                 }, true);
                 toggleButton.className = 'trend-data-toggle';
                 toggleButton.style.marginTop = '10px';
@@ -222,6 +237,25 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
             
             updateChart();
         });
+        
+        buttonsContainer.appendChild(zeroLineButton);
+        buttonsContainer.appendChild(trendButton);
+        buttonsContainer.appendChild(separateTrendButton);
+        controlRow.appendChild(buttonsContainer);
+        
+        // Clear existing content and add the new control row
+        elements.segmentControls.innerHTML = '';
+        elements.segmentControls.appendChild(controlRow);
+        
+        Object.assign(elements.excluded.style, {
+            padding: '10px',
+            backgroundColor: '#f5f5f5',
+            borderRadius: '4px',
+            display: 'none',
+            width: '100%',
+            textAlign: 'center'
+        });
+    }
 
     //////////////////////////////////////////////////////////////////////////////////////
     //////////////////////////////////END OF Create controls//////////////////////////////
@@ -391,11 +425,11 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 connectNulls: false
             });
             
-            // Only add trend lines if showMainGraphTrend is true and not creating separate trend graph
             if (showMainGraphTrend && showTrendInMain) {
                 series.push(...trends);
             }
         } else {
+            // Only add data points series if showDataPointsInTrend is true
             if (showDataPointsInTrend) {
                 series.push({
                     name: 'Data Points',
@@ -403,7 +437,8 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                     color: 'rgba(0, 0, 139, 0.15)',
                     marker: { enabled: true, radius: 3 },
                     lineWidth: 1,
-                    connectNulls: false
+                    connectNulls: false,
+                    visible: true
                 });
             }
             series.push(...trends);
