@@ -1,5 +1,4 @@
 function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
-    // State variables
     let filteredData = [...data];
     let excludedPoints = [];
     let currentSegments = 1;
@@ -11,11 +10,9 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
     let showTrendInMain = true;
     let showDataPointsInTrend = false;
 
-    // Get last names for labels
     const driver1LastName = driver1Name.split(' ').pop();
     const driver2LastName = driver2Name.split(' ').pop();
 
-    // Common styles
     const buttonStyle = {
         margin: '0 5px',
         padding: '8px 16px',
@@ -27,7 +24,6 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         transition: 'background-color 0.3s'
     };
 
-    // Create UI containers
     const elements = ['filterButtons', 'segmentControls', 'excluded'].reduce((acc, id) => {
         acc[id] = document.createElement('div');
         acc[id].style.textAlign = 'center';
@@ -38,13 +34,11 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
 
     // Create controls
     function createControls() {
-        // Segment controls label
         elements.segmentControls.appendChild(Object.assign(document.createElement('span'), {
             textContent: 'Trend line segments: ',
             style: 'marginRight: 10px'
         }));
 
-        // Segment buttons
         [1, 2, 3, 4].forEach(segments => {
             const button = Object.assign(document.createElement('button'), {
                 textContent: segments,
@@ -62,13 +56,11 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
             elements.segmentControls.appendChild(button);
         });
 
-        // Add separators and special buttons
-        elements.segmentControls.appendChild(createSeparator());
-        elements.segmentControls.appendChild(createTrendButton());
         elements.segmentControls.appendChild(createSeparator());
         elements.segmentControls.appendChild(createZeroLineButton());
+        elements.segmentControls.appendChild(createSeparator());
+        elements.segmentControls.appendChild(createTrendButton());
 
-        // Filter buttons
         [1, 1.5, 2, 3, 5].forEach(threshold => {
             const button = Object.assign(document.createElement('button'), {
                 textContent: `Filter >${threshold}%`,
@@ -78,7 +70,6 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
             elements.filterButtons.appendChild(button);
         });
 
-        // Excluded points container
         Object.assign(elements.excluded.style, {
             padding: '10px',
             backgroundColor: '#f5f5f5',
@@ -94,32 +85,57 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         });
     }
 
+    function createZeroLineButton() {
+        return Object.assign(document.createElement('button'), {
+            textContent: 'Zero Line',
+            className: 'zero-line-btn',
+            onclick: function() {
+                isZeroLineRed = !isZeroLineRed;
+                this.style.backgroundColor = isZeroLineRed ? '#8b0000' : '#4a4a4a';
+                
+                if (mainChart) {
+                    const mainZeroLine = mainChart.yAxis[0].plotLinesAndBands[0];
+                    if (isZeroLineRed) {
+                        mainZeroLine.svgElem.show();
+                        mainZeroLine.svgElem.attr({
+                            stroke: '#ff3333',
+                            'stroke-width': 1
+                        });
+                    } else {
+                        mainZeroLine.svgElem.show();
+                        mainZeroLine.svgElem.attr({
+                            stroke: '#CCCCCC',
+                            'stroke-width': 1
+                        });
+                    }
+                }
+                
+                if (trendChart) {
+                    const trendZeroLine = trendChart.yAxis[0].plotLinesAndBands[0];
+                    if (isZeroLineRed) {
+                        trendZeroLine.svgElem.show();
+                        trendZeroLine.svgElem.attr({
+                            stroke: '#ff3333',
+                            'stroke-width': 1
+                        });
+                    } else {
+                        trendZeroLine.svgElem.show();
+                        trendZeroLine.svgElem.attr({
+                            stroke: '#CCCCCC',
+                            'stroke-width': 1
+                        });
+                    }
+                }
+            },
+            style: Object.entries(buttonStyle).map(([k, v]) => `${k}:${v}`).join(';')
+        });
+    }
+
     function createTrendButton() {
         return Object.assign(document.createElement('button'), {
             textContent: 'Separate Trend Graph',
             className: 'trend-only-btn',
             onclick: toggleTrendGraph,
-            style: Object.entries(buttonStyle).map(([k, v]) => `${k}:${v}`).join(';')
-        });
-    }
-
-    function createZeroLineButton() {
-        return Object.assign(document.createElement('button'), {
-            textContent: 'Zero Line',
-            className: 'zero-line-btn',
-            onclick: () => {
-                isZeroLineRed = !isZeroLineRed;
-                const color = isZeroLineRed ? '#ff3333' : '#CCCCCC';
-                this.style.backgroundColor = isZeroLineRed ? '#8b0000' : '#4a4a4a';
-                
-                [mainChart, trendChart].forEach(chart => {
-                    if (chart) {
-                        const zeroLine = chart.yAxis[0].plotLinesAndBands[0];
-                        zeroLine.options.color = color;
-                        zeroLine.render();
-                    }
-                });
-            },
             style: Object.entries(buttonStyle).map(([k, v]) => `${k}:${v}`).join(';')
         });
     }
@@ -173,7 +189,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                     return null;
                 }
                 return Number(value.toFixed(3));
-            }).filter(value => value !== null);
+            });
             activeThreshold = threshold;
             elements.filterButtons.querySelectorAll('button')
                 .forEach(b => b.style.backgroundColor = '#4a4a4a');
@@ -203,11 +219,12 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 series.push({
                     name: 'Data Points',
                     data: data,
-                    color: '#00008B',
-                    marker: { enabled: true, radius: 4 },
+                    color: 'rgba(0, 0, 139, 0.15)',
+                    marker: { enabled: true, radius: 3 },
+                    lineWidth: 1,
                     connectNulls: false,
                     enableMouseTracking: false,
-                    states: { inactive: { opacity: 1 } }
+                    states: { inactive: { opacity: 0.15 } }
                 });
             }
             series.push(...trends);
@@ -230,7 +247,7 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
                 labels: { format: '{value:.1f}%' },
                 plotLines: [{
                     color: isZeroLineRed ? '#ff3333' : '#CCCCCC',
-                    width: 1,  // Slimmer zero line
+                    width: 1,
                     value: 0,
                     zIndex: 2
                 }],
@@ -338,7 +355,6 @@ function QualifyingTrendGraph(container, data, driver1Name, driver2Name) {
         if (trendOnlyGraph) updateTrendOnlyGraph();
     }
 
-    // Initialize
     const graphContainer = Object.assign(document.createElement('div'), {
         style: 'width: 100%; height: 400px'
     });
