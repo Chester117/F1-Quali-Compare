@@ -71,25 +71,23 @@ function createTable(driver1, driver2) {
     div.style.display = "flex";
     div.style.flexDirection = "column";
     div.style.alignItems = "center";
-    div.style.width = "100%"; // Ensure the container takes full width
-    div.style.margin = "0 auto"; // Center the container
+    div.style.width = "100%";
+    div.style.margin = "0 auto";
     
-    // Add driver names header with Source Han Sans SC font
     const driverHeader = document.createElement("h1");
     driverHeader.style.fontSize = "2em";
     driverHeader.style.marginBottom = "1em";
     driverHeader.style.textAlign = "center";
-    driverHeader.style.fontFamily = "'Source Han Sans SC', sans-serif"; // Changed to Source Han Sans SC
-    driverHeader.style.width = "100%"; // Ensure header takes full width
+    driverHeader.style.fontFamily = "'Source Han Sans SC', sans-serif";
+    driverHeader.style.width = "100%";
     driverHeader.textContent = `${driver1.name} vs ${driver2.name}`;
     div.appendChild(driverHeader);
     
-    // Create a container div for this specific table
     const tableContainer = document.createElement("div");
-    tableContainer.style.display = "flex"; // Changed to flex
-    tableContainer.style.justifyContent = "center"; // Center the table horizontally
+    tableContainer.style.display = "flex";
+    tableContainer.style.justifyContent = "center";
     tableContainer.style.marginBottom = "2em";
-    tableContainer.style.width = "100%"; // Full width container
+    tableContainer.style.width = "100%";
     
     const table = document.createElement("table");
     table.style.borderCollapse = "collapse";
@@ -100,7 +98,6 @@ function createTable(driver1, driver2) {
     const tr = document.createElement("tr");
     table.appendChild(tr);
 
-    // Add headers with increased widths for driver columns
     const headers = [
         { text: "Round", width: "50px" },
         { text: "Race", width: "200px" },
@@ -132,6 +129,7 @@ function createTable(driver1, driver2) {
         raceCount: 0,
         timeDifferences: [],
         percentageDifferences: [],
+        deltaPercentages: [], // Add this new array
         driver1Better: 0,
     };
 }
@@ -371,10 +369,10 @@ function displayMedianResults(currentTable) {
     graphContainer.style.margin = '20px auto';
     currentTable.table.parentNode.appendChild(graphContainer);
     
-    // Create the trend graph
+    // Create the trend graph with deltaPercentages
     QualifyingTrendGraph(
         graphContainer,
-        currentTable.percentageDifferences,
+        currentTable.deltaPercentages,
         driver1Name,
         driver2Name
     );
@@ -467,6 +465,7 @@ function createQualifyingTable(results) {
 
             currentTable.timeDifferences.push(timeDifference);
             currentTable.percentageDifferences.push(percentageDifference);
+            currentTable.deltaPercentages.push(percentageDifference);
             currentTable.sameRaceCount++;
 
             if (timeDifference > 0) {
@@ -476,7 +475,6 @@ function createQualifyingTable(results) {
             const time = millisecondsToStruct(timeDifference);
             const tdColor = time.isNegative ? "#FF7878" : "#85FF78";
 
-            // Update both round and race name cell colors
             cells[0].backgroundColor = tdColor;
             cells[1].backgroundColor = tdColor;
 
