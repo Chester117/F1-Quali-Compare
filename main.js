@@ -320,7 +320,7 @@ function displayMedianResults(currentTable) {
         const valueCell = document.createElement("td");
         valueCell.style.padding = "12px 6px";
         valueCell.style.fontWeight = "bold";
-        valueCell.style.textAlign = "center"; // Changed from left to center
+        valueCell.style.textAlign = "center"; 
         valueCell.colSpan = 5;
         if (index === 0) valueCell.style.borderTop = "4px solid #ddd";
         
@@ -345,7 +345,7 @@ function displayMedianResults(currentTable) {
     // Score cell - Updated to center alignment
     const scoreCell = document.createElement("td");
     scoreCell.style.padding = "12px 6px";
-    scoreCell.style.textAlign = "center"; // Changed from left to center
+    scoreCell.style.textAlign = "center";
     scoreCell.style.fontSize = "1.1em";
     scoreCell.style.fontWeight = "bold";
     scoreCell.colSpan = 5;
@@ -362,6 +362,19 @@ function displayMedianResults(currentTable) {
     scoreCell.textContent = scoreText;
 
     qualyScoreTr.appendChild(scoreCell);
+
+    // Add the trend graph
+    const graphContainer = document.createElement('div');
+    graphContainer.className = 'trend-graph-container';
+    currentTable.table.parentNode.appendChild(graphContainer);
+    
+    // Create and render the trend graph
+    QualifyingTrendGraph.create(
+        graphContainer,
+        currentTable.percentageDifferences,
+        driver1Name,
+        driver2Name
+    );
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////  END END END  ///////////////////////////////////////////
